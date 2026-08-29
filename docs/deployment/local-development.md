@@ -1,20 +1,35 @@
 # Local Development
 
-Use Docker Compose for PostgreSQL, Redis, and MinIO.
+Arete currently runs the web app and API locally while using Clerk for web authentication and a Neon-linked env for the production database target.
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml up -d
 npm install
-npm run db:generate
-npm run dev
+npm run dev -w @arete/api
+npm run dev -w @arete/web
 ```
 
-For production, the first recommended low-cost deployment is:
+If port 3000 is already occupied:
 
-- Managed PostgreSQL
-- Managed Redis where affordable, or single-node Redis initially
-- S3-compatible storage such as Cloudflare R2, AWS S3, or Backblaze B2
-- A small container host for API and worker
-- Static/edge hosting for Next.js where supported
+```bash
+cd apps/web
+npx next dev -p 3001
+```
+
+Current local behavior:
+
+- Seeded accounts are created through `POST /api/v1/auth/dev/seed`.
+- Demo/local sessions use `POST /api/v1/auth/login`.
+- Clerk sessions exchange through `POST /api/arete/session`, then `POST /api/v1/auth/clerk/session`.
+- Teacher uploads write to `.arete-dev/uploads`.
+- AI quiz drafts call OpenAI when `OPENAI_API_KEY` is present and return editable fallback drafts if the provider call fails.
+
+Production recommendation:
+
+- Vercel for the Next.js web app.
+- A container host such as Railway, Render, or Fly.io for the NestJS API and worker.
+- Neon Postgres for durable data.
+- Vercel Blob as the practical replacement for Cloudflare R2 when deploying on Vercel, or Neon object storage if the Neon plan/service supports the needed usage.
+
+The Vercel project is linked, but do not deploy the public web app with `NEXT_PUBLIC_API_BASE_URL=http://localhost:4000/api/v1`; the deployed browser cannot reach your local API.
 
 Avoid committing `.env`. Use real secret storage in production.
