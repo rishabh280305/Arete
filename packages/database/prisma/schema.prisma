@@ -1,0 +1,424 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  SCHOOL_ADMIN
+  PLATFORM_ADMIN
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REMOVED
+}
+
+enum ImportSource {
+  GOOGLE_CLASSROOM
+  MICROSOFT_EDUCATION
+  CSV
+  EXCEL
+  JSON
+  API
+  MANUAL
+}
+
+enum ImportJobStatus {
+  DRAFT
+  ANALYZING
+  PREVIEW_READY
+  VALIDATING
+  IMPORTING
+  COMPLETED
+  COMPLETED_WITH_ERRORS
+  FAILED
+  ROLLED_BACK
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  FILL_BLANK
+  MATCHING
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  status      String   @default("active")
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships Membership[]
+  classes     Class[]
+  subjects    Subject[]
+  auditLogs   AuditLog[]
+  importJobs  ImportJob[]
+  aiUsage     AiUsageRecord[]
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  displayName     String
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  memberships Membership[]
+  sessions    Session[]
+}
+
+model Membership {
+  id        String           @id @default(uuid())
+  schoolId  String
+  userId    String
+  roles     UserRole[]
+  status    MembershipStatus @default(INVITED)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, userId])
+  @@index([schoolId, status])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshHash  String
+  userAgent    String?
+  ipHash       String?
+  revokedAt    DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String
+  startsOn  DateTime
+  endsOn    DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Class {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String
+  grade     String?
+  section   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school      School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  assignments Assignment[]
+  quizzes     Quiz[]
+
+  @@unique([schoolId, name, section])
+  @@index([schoolId])
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  schoolId  String
+  name      String
+  code      String?
+  createdAt DateTime @default(now())
+
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  topics   Topic[]
+  quizzes  Quiz[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  schoolId  String
+  classId   String
+  studentMembershipId String
+  createdAt DateTime @default(now())
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, classId, studentMembershipId])
+  @@index([schoolId, studentMembershipId])
+}
+
+model TeacherAssignment {
+  id        String   @id @default(uuid())
+  schoolId  String
+  classId   String
+  subjectId String
+  teacherMembershipId String
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, classId, subjectId, teacherMembershipId])
+  @@index([schoolId, teacherMembershipId])
+}
+
+model ParentStudentLink {
+  id        String   @id @default(uuid())
+  schoolId  String
+  parentMembershipId String
+  studentMembershipId String
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, parentMembershipId, studentMembershipId])
+  @@index([schoolId, studentMembershipId])
+}
+
+model Topic {
+  id        String   @id @default(uuid())
+  schoolId  String
+  subjectId String
+  parentId  String?
+  title     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, subjectId])
+}
+
+model LearningMaterial {
+  id          String   @id @default(uuid())
+  schoolId    String
+  subjectId   String?
+  topicId     String?
+  title       String
+  description String?
+  fileId      String?
+  url         String?
+  publishedAt DateTime?
+  createdByMembershipId String
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId, subjectId])
+  @@index([schoolId, topicId])
+}
+
+model FileObject {
+  id          String   @id @default(uuid())
+  schoolId    String
+  key         String
+  filename    String
+  contentType String
+  byteSize    Int
+  checksum    String?
+  createdByMembershipId String
+  createdAt   DateTime @default(now())
+
+  @@unique([schoolId, key])
+  @@index([schoolId, createdAt])
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  schoolId    String
+  classId     String
+  subjectId   String?
+  title       String
+  instructions String?
+  dueAt       DateTime?
+  publishedAt DateTime?
+  createdByMembershipId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, classId])
+}
+
+model Quiz {
+  id          String   @id @default(uuid())
+  schoolId    String
+  classId     String?
+  subjectId   String
+  title       String
+  description String?
+  timeLimitSeconds Int?
+  publishedAt DateTime?
+  createdByMembershipId String
+  createdAt DateTime @default(now())
+
+  class   Class?  @relation(fields: [classId], references: [id])
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  @@index([schoolId, classId])
+  @@index([schoolId, subjectId])
+}
+
+model Question {
+  id          String       @id @default(uuid())
+  schoolId    String
+  subjectId   String
+  topicId     String?
+  type        QuestionType
+  difficulty  Difficulty
+  prompt      String
+  answer      Json
+  explanation String?
+  approvedAt  DateTime?
+  createdByMembershipId String
+  aiGenerationJobId String?
+  createdAt DateTime @default(now())
+
+  options QuestionOption[]
+
+  @@index([schoolId, subjectId, topicId])
+  @@index([schoolId, approvedAt])
+}
+
+model QuestionOption {
+  id         String  @id @default(uuid())
+  questionId String
+  label      String
+  isCorrect  Boolean @default(false)
+  order      Int     @default(0)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id          String   @id @default(uuid())
+  schoolId    String
+  quizId      String
+  studentMembershipId String
+  score       Decimal?
+  submittedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([schoolId, quizId])
+  @@index([schoolId, studentMembershipId])
+}
+
+model StudentTopicMastery {
+  id          String   @id @default(uuid())
+  schoolId    String
+  studentMembershipId String
+  topicId     String
+  mastery     Decimal  @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([schoolId, studentMembershipId, topicId])
+}
+
+model AiGenerationJob {
+  id          String   @id @default(uuid())
+  schoolId    String
+  requestedByMembershipId String
+  status      String   @default("queued")
+  provider    String   @default("openai")
+  model       String?
+  request     Json
+  error       String?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([schoolId, status])
+}
+
+model AiUsageRecord {
+  id           String   @id @default(uuid())
+  schoolId     String
+  feature      String
+  provider     String
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  estimatedCostUsd Decimal?
+  createdAt    DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, feature, createdAt])
+}
+
+model IntegrationConnection {
+  id          String   @id @default(uuid())
+  schoolId    String
+  source      ImportSource
+  displayName String
+  encryptedCredentials Json?
+  status      String   @default("connected")
+  createdByMembershipId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([schoolId, source])
+}
+
+model ImportJob {
+  id          String          @id @default(uuid())
+  schoolId    String
+  source      ImportSource
+  status      ImportJobStatus @default(DRAFT)
+  initiatedByMembershipId String
+  mapping     Json           @default("{}")
+  preview     Json?
+  errorReport Json?
+  progress    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status])
+  @@index([schoolId, source])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  schoolId    String?
+  actorUserId String?
+  actorMembershipId String?
+  action      String
+  targetType  String
+  targetId    String?
+  requestId   String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}

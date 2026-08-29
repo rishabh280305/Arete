@@ -1,0 +1,16 @@
+node_modules
+dist
+.next
+.expo
+.turbo
+coverage
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.arete-dev
+local.db
+.neon
+
+.vercel

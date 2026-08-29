@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Arete",
+    "slug": "arete",
+    "scheme": "arete",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.arete.lms"
+    },
+    "android": {
+      "package": "com.arete.lms",
+      "adaptiveIcon": {
+        "backgroundColor": "#167a74"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000/api/v1"
+    }
+  }
+}

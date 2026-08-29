@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@arete/config": ["packages/config/src/index.ts"],
+      "@arete/types": ["packages/types/src/index.ts"],
+      "@arete/validation": ["packages/validation/src/index.ts"],
+      "@arete/permissions": ["packages/permissions/src/index.ts"],
+      "@arete/auth": ["packages/auth/src/index.ts"],
+      "@arete/integrations": ["packages/integrations/src/index.ts"],
+      "@arete/ai": ["packages/ai/src/index.ts"],
+      "@arete/observability": ["packages/observability/src/index.ts"],
+      "@arete/database": ["packages/database/src/index.ts"]
+    }
+  }
+}

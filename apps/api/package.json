@@ -1,0 +1,26 @@
+{
+  "name": "@arete/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@arete/auth": "0.1.0",
+    "@arete/config": "0.1.0",
+    "@arete/database": "0.1.0",
+    "@arete/observability": "0.1.0",
+    "@arete/permissions": "0.1.0",
+    "@arete/types": "0.1.0",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-fastify": "^11.1.6",
+    "dotenv": "^17.4.2",
+    "openai": "^7.8.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  }
+}

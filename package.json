@@ -1,0 +1,36 @@
+{
+  "name": "arete",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Arete multi-tenant LMS SaaS monorepo.",
+  "packageManager": "npm@10.9.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "concurrently -n api,web,worker -c blue,green,magenta \"npm run dev -w @arete/api\" \"npm run dev -w @arete/web\" \"npm run dev -w @arete/worker\"",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "db:generate": "prisma generate --schema packages/database/prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema packages/database/prisma/schema.prisma",
+    "db:studio": "prisma studio --schema packages/database/prisma/schema.prisma"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.34.0",
+    "playwright": "^1.62.1",
+    "prettier": "^3.6.2",
+    "prisma": "^6.14.0",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
