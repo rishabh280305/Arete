@@ -6,18 +6,27 @@ import {
   BarChart3,
   Bell,
   BookOpen,
+  CalendarDays,
   Check,
   ChevronRight,
   CircleAlert,
   ClipboardCheck,
+  ClipboardList,
   Download,
+  FileText,
   Flame,
+  FolderOpen,
   GraduationCap,
+  ListChecks,
+  MessageSquare,
   RefreshCcw,
   ShieldCheck,
+  Sparkles,
   UploadCloud,
-  Users
+  Users,
+  Wand2
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   type ActivityFeed,
   type AreteDashboard,
@@ -63,6 +72,8 @@ import {
 } from "../../lib/api";
 
 type View = "student" | "teacher" | "parent" | "admin" | "platform";
+type TeacherWorkflow = "assignment" | "material" | "quiz" | "rubric" | "calendar";
+type StudentPracticeMode = "quick" | "learn" | "exam" | "mistake" | "question";
 type SectionId =
   | "overview"
   | "work"
@@ -111,42 +122,42 @@ function viewFromRole(role: string): View {
   return "student";
 }
 
-const sectionNav: Record<View, Array<{ id: SectionId; label: string }>> = {
+const sectionNav: Record<View, Array<{ id: SectionId; label: string; icon: LucideIcon }>> = {
   student: [
-    { id: "overview", label: "Today" },
-    { id: "work", label: "Classwork" },
-    { id: "practice", label: "Practice" },
-    { id: "library", label: "Resources" },
-    { id: "attendance", label: "Attendance" }
+    { id: "overview", label: "Today", icon: CalendarDays },
+    { id: "work", label: "Classwork", icon: ClipboardList },
+    { id: "practice", label: "Practice", icon: Sparkles },
+    { id: "library", label: "Resources", icon: FolderOpen },
+    { id: "attendance", label: "Attendance", icon: ClipboardCheck }
   ],
   teacher: [
-    { id: "overview", label: "Dashboard" },
-    { id: "classes", label: "Classes" },
-    { id: "author", label: "Classwork" },
-    { id: "library", label: "Resources" },
-    { id: "review", label: "Grades" },
-    { id: "attendance", label: "Attendance" }
+    { id: "overview", label: "Dashboard", icon: BarChart3 },
+    { id: "classes", label: "Classes", icon: GraduationCap },
+    { id: "author", label: "Classwork", icon: ClipboardList },
+    { id: "library", label: "Resources", icon: FolderOpen },
+    { id: "review", label: "Grades", icon: BookOpen },
+    { id: "attendance", label: "Attendance", icon: ClipboardCheck }
   ],
   parent: [
-    { id: "overview", label: "Summary" },
-    { id: "children", label: "Children" },
-    { id: "work", label: "Classwork" },
-    { id: "library", label: "Resources" },
-    { id: "attendance", label: "Attendance" }
+    { id: "overview", label: "Summary", icon: BarChart3 },
+    { id: "children", label: "Children", icon: Users },
+    { id: "work", label: "Classwork", icon: ClipboardList },
+    { id: "library", label: "Resources", icon: FolderOpen },
+    { id: "attendance", label: "Attendance", icon: ClipboardCheck }
   ],
   admin: [
-    { id: "overview", label: "Operations" },
-    { id: "classes", label: "Classes" },
-    { id: "people", label: "People" },
-    { id: "attendance", label: "Attendance" },
-    { id: "migration", label: "Migration" },
-    { id: "analytics", label: "Reports" }
+    { id: "overview", label: "Operations", icon: ShieldCheck },
+    { id: "classes", label: "Classes", icon: GraduationCap },
+    { id: "people", label: "People", icon: Users },
+    { id: "attendance", label: "Attendance", icon: ClipboardCheck },
+    { id: "migration", label: "Migration", icon: UploadCloud },
+    { id: "analytics", label: "Reports", icon: BarChart3 }
   ],
   platform: [
-    { id: "overview", label: "Overview" },
-    { id: "schools", label: "Schools" },
-    { id: "people", label: "People" },
-    { id: "analytics", label: "Usage" }
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "schools", label: "Schools", icon: ShieldCheck },
+    { id: "people", label: "People", icon: Users },
+    { id: "analytics", label: "Usage", icon: Sparkles }
   ]
 };
 
@@ -342,17 +353,20 @@ export function AreteDashboardShell() {
         {dashboard ? (
           <nav className="sectionNav" aria-label="Workspace sections">
             <span>Workspace</span>
-            {sectionNav[activeView].map((item) => (
-              <button
-                className={item.id === activeSection ? "navItem sub active" : "navItem sub"}
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                type="button"
-              >
-                {item.label}
-                <ChevronRight size={15} />
-              </button>
-            ))}
+            {sectionNav[activeView].map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  className={item.id === activeSection ? "navItem sub active" : "navItem sub"}
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  type="button"
+                >
+                  <span><Icon size={17} /> {item.label}</span>
+                  <ChevronRight size={15} />
+                </button>
+              );
+            })}
           </nav>
         ) : null}
       </aside>
@@ -720,15 +734,50 @@ function StudentView({
   setQuizResult: (value: string | null) => void;
   token: string | null;
 }) {
-  const question = lms?.practice[0];
+  const [selectedPracticeIndex, setSelectedPracticeIndex] = useState(0);
+  const [practiceMode, setPracticeMode] = useState<StudentPracticeMode>("quick");
+  const questions = lms?.practice ?? [];
+  const question = questions[selectedPracticeIndex] ?? questions[0];
   const quiz = lms?.quizzes.find((item) => item.status === "published");
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const assignments = lms?.assignments ?? [];
+  const materials = lms?.materials ?? [];
+  const currentClass = question ? lms?.classes[0] : undefined;
+  const modes: Array<{ id: StudentPracticeMode; label: string }> = [
+    { id: "quick", label: "Quick Practice" },
+    { id: "learn", label: "Learn Topic" },
+    { id: "exam", label: "Exam Prep" },
+    { id: "mistake", label: "Explain Mistake" },
+    { id: "question", label: "Ask Question" }
+  ];
+
+  function coachPrompt(kind: "hint" | "explain" | "similar" | "plan") {
+    if (!question) {
+      setPracticeResult("No practice question is available for this class yet.");
+      return;
+    }
+
+    const firstStep = question.explanation.split(".")[0] || question.explanation;
+    if (kind === "hint") {
+      setPracticeResult(`Hint: focus on the first move. ${firstStep}. Try the option that matches that step.`);
+      return;
+    }
+    if (kind === "similar") {
+      setPracticeResult(`Similar practice: keep the same method and change the numbers. ${firstStep}.`);
+      return;
+    }
+    if (kind === "plan") {
+      setPracticeResult("Plan: answer this question, review the explanation, then do one similar problem before moving difficulty up.");
+      return;
+    }
+    setPracticeResult(`Explanation: ${question.explanation}`);
+  }
 
   return (
     <section className="contentGrid">
       {activeSection === "overview" || activeSection === "work" ? <article className="panel wide">
         <div className="panelHeader">
-          <h2>Classwork due</h2>
+          <h2>{activeSection === "overview" ? "Today" : "Assignments"}</h2>
           <GraduationCap size={22} />
         </div>
         <div className="taskList">
@@ -768,49 +817,117 @@ function StudentView({
               </div>
             );
           })}
+          {!dashboard.student.dueToday.length && !assignments.length ? <EmptyState>New assignments from your teachers will appear here.</EmptyState> : null}
         </div>
       </article> : null}
 
-      {activeSection === "overview" || activeSection === "practice" || activeSection === "library" ? <article className="panel">
-        <div className="scoreStack">
-          <div><Flame size={22} /> {lms?.progress.streakDays ?? dashboard.student.streakDays} days</div>
-          <div><ClipboardCheck size={22} /> {lms?.progress.xp ?? dashboard.student.xp} XP</div>
-          <div><BarChart3 size={22} /> Level {lms?.progress.level ?? dashboard.student.level}</div>
+      {activeSection === "overview" || activeSection === "practice" ? <article className="panel learningStudio wide">
+        <div className="panelHeader">
+          <div>
+            <h2>Practice with AI</h2>
+            <span>{currentClass ? `Based on ${currentClass.name} ${currentClass.section}` : "Adaptive practice"}</span>
+          </div>
+          <Sparkles size={22} />
         </div>
-        <h2>Practice focus</h2>
-        <div className="chips">
-          {((lms?.progress.achievements.length ? lms.progress.achievements : dashboard.student.weakAreas)).map((area) => (
-            <span key={area}>{area}</span>
+        <div className="modeTabs" aria-label="Practice mode">
+          {modes.map((mode) => (
+            <button
+              className={practiceMode === mode.id ? "modeTab active" : "modeTab"}
+              key={mode.id}
+              onClick={() => setPracticeMode(mode.id)}
+              type="button"
+            >
+              {mode.label}
+            </button>
           ))}
         </div>
         {question ? (
-          <div className="practiceCard">
-            <h2>Practice</h2>
-            <strong>{question.prompt}</strong>
-            <div className="answerGrid">
-              {question.options.map((option, index) => (
+          <div className="practiceSession">
+            <div className="problemPane">
+              <span className="sectionEyebrow">{practiceMode === "exam" ? "Timed check" : "Current question"}</span>
+              <strong>{question.prompt}</strong>
+              <div className="answerGrid">
+                {question.options.map((option, index) => (
+                  <button
+                    className="answerButton"
+                    key={option}
+                    onClick={() =>
+                      void runAction(`attempt-${question.id}-${index}`, async () => {
+                        const result = await submitPracticeAttempt(token ?? "", {
+                          questionId: question.id,
+                          selectedIndex: index
+                        });
+                        setPracticeResult(`${result.correct ? "Correct" : "Review"}: ${result.explanation}`);
+                      })
+                    }
+                    type="button"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              <div className="sessionControls">
+                <button className="iconTextButton" onClick={() => coachPrompt("hint")} type="button"><Sparkles size={16} /> Hint</button>
+                <button className="iconTextButton" onClick={() => coachPrompt("explain")} type="button"><MessageSquare size={16} /> Explain</button>
+                <button className="iconTextButton" onClick={() => coachPrompt("similar")} type="button"><RefreshCcw size={16} /> Similar</button>
                 <button
-                  className="answerButton"
-                  key={option}
-                  onClick={() =>
-                    void runAction(`attempt-${question.id}-${index}`, async () => {
-                      const result = await submitPracticeAttempt(token ?? "", {
-                        questionId: question.id,
-                        selectedIndex: index
-                      });
-                      setPracticeResult(`${result.correct ? "Correct" : "Review"}: ${result.explanation}`);
-                    })
-                  }
+                  className="iconTextButton"
+                  onClick={() => {
+                    setSelectedPracticeIndex((current) => (questions.length ? (current + 1) % questions.length : current));
+                    setPracticeResult(null);
+                  }}
                   type="button"
                 >
-                  {option}
+                  <ChevronRight size={16} /> Skip
                 </button>
-              ))}
+              </div>
+              {practiceResult ? <p className="resultLine">{practiceResult}</p> : null}
             </div>
-            {practiceResult ? <p className="resultLine">{practiceResult}</p> : null}
-            {lms ? <small>{lms.progress.attempts} attempts · {lms.progress.accuracy}% accuracy</small> : null}
+            <aside className="coachPanel">
+              <span className="sectionEyebrow">Session</span>
+              <div className="scoreStack compact">
+                <div><Flame size={18} /> {lms?.progress.streakDays ?? dashboard.student.streakDays} days</div>
+                <div><ClipboardCheck size={18} /> {lms?.progress.xp ?? dashboard.student.xp} XP</div>
+                <div><BarChart3 size={18} /> {lms?.progress.accuracy ?? 0}%</div>
+              </div>
+              <button className="textButton secondary fullWidth" onClick={() => coachPrompt("plan")} type="button">Build study plan</button>
+              <div className="chips">
+                {((lms?.progress.achievements.length ? lms.progress.achievements : dashboard.student.weakAreas)).map((area) => (
+                  <span key={area}>{area}</span>
+                ))}
+              </div>
+            </aside>
           </div>
-        ) : null}
+        ) : <EmptyState>No practice questions are available yet. Ask a teacher to publish questions from the bank.</EmptyState>}
+      </article> : null}
+
+      {activeSection === "overview" || activeSection === "library" ? <article className="panel">
+        <div className="panelHeader">
+          <h2>Resources</h2>
+          <FolderOpen size={22} />
+        </div>
+        {!materials.length ? <EmptyState>Class materials will appear here after your teacher publishes them.</EmptyState> : null}
+        <div className="mappingList">
+          {materials.slice(0, activeSection === "library" ? undefined : 4).map((material) => (
+            <div key={material.id}>
+              <strong>{material.title}</strong>
+              <span>{material.kind} - {material.filename ?? material.content}</span>
+              {material.kind === "file" ? (
+                <button
+                  className="iconTextButton"
+                  onClick={() => void runAction(`download-${material.id}`, () => downloadMaterialFile(token ?? "", material.id, material.filename ?? material.title))}
+                  type="button"
+                >
+                  <Download size={16} />
+                  Download
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </article> : null}
+
+      {activeSection === "practice" || activeSection === "work" ? <article className="panel quizLane">
         {quiz ? (
           <div className="practiceCard">
             <h2>Quiz</h2>
@@ -849,30 +966,7 @@ function StudentView({
             </button>
             {quizResult ? <p className="resultLine">{quizResult}</p> : null}
           </div>
-        ) : null}
-        {(lms?.materials ?? []).length ? (
-          <div className={activeSection === "library" ? "practiceCard libraryFocus" : "practiceCard"}>
-            <h2>Materials</h2>
-            {(lms?.materials ?? []).slice(0, 4).map((material) => (
-              <div className="activityItem" key={material.id}>
-                <div>
-                  <strong>{material.title}</strong>
-                  <span>{material.filename ?? material.content}</span>
-                </div>
-                {material.kind === "file" ? (
-                  <button
-                    className="iconTextButton"
-                    onClick={() => void runAction(`download-${material.id}`, () => downloadMaterialFile(token ?? "", material.id, material.filename ?? material.title))}
-                    type="button"
-                  >
-                    <Download size={16} />
-                    Download
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
+        ) : <EmptyState>Published quizzes will appear here.</EmptyState>}
       </article> : null}
       {activeSection === "attendance" ? <AttendancePanel lms={lms} /> : null}
     </section>
@@ -923,6 +1017,24 @@ function TeacherView({
     correctTwo: 1,
     explanationTwo: "Subtract 9 from both sides."
   });
+  const [teacherWorkflow, setTeacherWorkflow] = useState<TeacherWorkflow>("assignment");
+  const [rubricRows, setRubricRows] = useState([
+    { criterion: "Reasoning", weight: "40", proficient: "Explains each step clearly" },
+    { criterion: "Accuracy", weight: "40", proficient: "Uses correct methods and final answer" },
+    { criterion: "Presentation", weight: "20", proficient: "Work is organized and readable" }
+  ]);
+  const [calendarPlan, setCalendarPlan] = useState([
+    "Introduce concept and model one worked example",
+    "Students complete guided practice from uploaded material",
+    "Exit ticket from quiz bank and assign follow-up practice"
+  ]);
+  const workflows: Array<{ id: TeacherWorkflow; label: string; icon: typeof ClipboardList }> = [
+    { id: "assignment", label: "Assignment", icon: ClipboardList },
+    { id: "material", label: "Material", icon: FolderOpen },
+    { id: "quiz", label: "Quiz", icon: ListChecks },
+    { id: "rubric", label: "Rubric", icon: FileText },
+    { id: "calendar", label: "Calendar", icon: CalendarDays }
+  ];
 
   return (
     <section className="contentGrid">
@@ -956,252 +1068,425 @@ function TeacherView({
         </div>
       </article> : null}
 
-      {activeSection === "author" ? <article className="panel">
-        <h2>Create assignment</h2>
-        <div className="formStack">
-          <label>
-            <span>Assignment class</span>
-            <select
-              value={assignmentForm.classId}
-              onChange={(event) => setAssignmentForm((current) => ({ ...current, classId: event.target.value }))}
-            >
-              {(lms?.classes ?? []).map((item) => (
-                <option key={item.id} value={item.id}>{item.name} {item.section}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Assignment title</span>
-            <input value={assignmentForm.title} onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Instructions</span>
-            <textarea value={assignmentForm.instructions} onChange={(event) => setAssignmentForm((current) => ({ ...current, instructions: event.target.value }))} />
-          </label>
-          <label>
-            <span>Due</span>
-            <input type="datetime-local" value={assignmentForm.dueAt} onChange={(event) => setAssignmentForm((current) => ({ ...current, dueAt: event.target.value }))} />
-          </label>
-          <button
-            className="textButton fullWidth"
-            onClick={() =>
-              void runAction("create-assignment", () =>
-                createAssignment(token ?? "", {
-                  classId: assignmentForm.classId || firstClassId,
-                  title: assignmentForm.title,
-                  instructions: assignmentForm.instructions,
-                  dueAt: new Date(assignmentForm.dueAt).toISOString()
-                })
-              )
-            }
-            type="button"
-          >
-            Create assignment
-          </button>
-
-          <label>
-            <span>AI topic</span>
-            <input value={aiForm.topic} onChange={(event) => setAiForm((current) => ({ ...current, topic: event.target.value }))} />
-          </label>
-          <label>
-            <span>Draft count</span>
-            <input
-              min={1}
-              max={5}
-              type="number"
-              value={aiForm.questionCount}
-              onChange={(event) => setAiForm((current) => ({ ...current, questionCount: Number(event.target.value) }))}
-            />
-          </label>
-          <button
-            className="textButton fullWidth secondary"
-            onClick={() =>
-              void runAction("generate-ai", () =>
-                generateAiDrafts(token ?? "", { topic: aiForm.topic, questionCount: aiForm.questionCount })
-              )
-            }
-            type="button"
-          >
-            Generate drafts
-          </button>
-        </div>
-
-        <h2>Classes</h2>
-        <div className="signalList">
-          {(lms?.classes ?? []).map((item) => (
-            <div key={item.id}>
-              <span>{item.name} {item.section}</span>
-              <strong>{item.subject}</strong>
-              <small>{item.studentCount} students</small>
+      {activeSection === "author" ? (
+        <article className="panel wide classworkStudio">
+          <div className="panelHeader">
+            <div>
+              <h2>Classwork studio</h2>
+              <span>Create one clean workflow at a time, then review before publishing.</span>
             </div>
-          ))}
-        </div>
-      </article> : null}
+            <button
+              className="iconTextButton"
+              onClick={() =>
+                void runAction("generate-ai", () =>
+                  generateAiDrafts(token ?? "", { topic: aiForm.topic, questionCount: aiForm.questionCount })
+                )
+              }
+              type="button"
+            >
+              <Wand2 size={16} /> Generate drafts
+            </button>
+          </div>
 
-      {activeSection === "author" ? <article className="panel">
-        <h2>Add material</h2>
-        <div className="formStack">
-          <label>
-            <span>Class</span>
-            <select value={materialForm.classId} onChange={(event) => setMaterialForm((current) => ({ ...current, classId: event.target.value }))}>
-              {(lms?.classes ?? []).map((item) => (
-                <option key={item.id} value={item.id}>{item.name} {item.section}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Title</span>
-            <input value={materialForm.title} onChange={(event) => setMaterialForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Kind</span>
-            <select value={materialForm.kind} onChange={(event) => setMaterialForm((current) => ({ ...current, kind: event.target.value as "link" | "note" | "file" }))}>
-              <option value="note">Note</option>
-              <option value="link">Link</option>
-              <option value="file">File</option>
-            </select>
-          </label>
-          <label>
-            <span>Content</span>
-            <textarea value={materialForm.content} onChange={(event) => setMaterialForm((current) => ({ ...current, content: event.target.value }))} />
-          </label>
-          {materialForm.kind === "file" ? (
-            <label>
-              <span>Upload</span>
-              <input
-                type="file"
-                onChange={(event) => setMaterialForm((current) => ({ ...current, file: event.target.files?.[0] ?? null }))}
-              />
-            </label>
-          ) : null}
-          <button
-            className="textButton fullWidth"
-            onClick={() =>
-              void runAction("create-material", async () => {
-                if (materialForm.kind === "file" && materialForm.file) {
-                  await uploadMaterialFile(token ?? "", {
-                    classId: materialForm.classId || firstClassId,
-                    title: materialForm.title,
-                    file: materialForm.file
-                  });
-                  setMaterialForm((current) => ({ ...current, kind: "note", file: null }));
-                  setActiveSection("library");
-                  return;
-                }
-                if (materialForm.kind === "file") {
-                  throw new Error("Choose a file before saving this material");
-                }
-                await createMaterial(token ?? "", {
-                  classId: materialForm.classId || firstClassId,
-                  title: materialForm.title,
-                  kind: materialForm.kind,
-                  content: materialForm.content
-                });
-                setActiveSection("library");
-              })
-            }
-            type="button"
-          >
-            Save material
-          </button>
-        </div>
-      </article> : null}
+          <div className="modeTabs workflowTabs" aria-label="Teacher workflow">
+            {workflows.map((workflow) => {
+              const Icon = workflow.icon;
+              return (
+                <button
+                  className={teacherWorkflow === workflow.id ? "modeTab active" : "modeTab"}
+                  key={workflow.id}
+                  onClick={() => setTeacherWorkflow(workflow.id)}
+                  type="button"
+                >
+                  <Icon size={16} />
+                  {workflow.label}
+                </button>
+              );
+            })}
+          </div>
 
-      {activeSection === "author" ? <article className="panel">
-        <h2>Create quiz</h2>
-        <div className="formStack">
-          <label>
-            <span>Class</span>
-            <select value={quizForm.classId} onChange={(event) => setQuizForm((current) => ({ ...current, classId: event.target.value }))}>
-              {(lms?.classes ?? []).map((item) => (
-                <option key={item.id} value={item.id}>{item.name} {item.section}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Title</span>
-            <input value={quizForm.title} onChange={(event) => setQuizForm((current) => ({ ...current, title: event.target.value }))} />
-          </label>
-          <label>
-            <span>Question 1</span>
-            <textarea value={quizForm.questionOne} onChange={(event) => setQuizForm((current) => ({ ...current, questionOne: event.target.value }))} />
-          </label>
-          <label>
-            <span>Options 1</span>
-            <input value={quizForm.optionOne} onChange={(event) => setQuizForm((current) => ({ ...current, optionOne: event.target.value }))} />
-          </label>
-          <label>
-            <span>Correct option 1</span>
-            <input min={1} max={4} type="number" value={quizForm.correctOne + 1} onChange={(event) => setQuizForm((current) => ({ ...current, correctOne: Number(event.target.value) - 1 }))} />
-          </label>
-          <label>
-            <span>Explanation 1</span>
-            <input value={quizForm.explanationOne} onChange={(event) => setQuizForm((current) => ({ ...current, explanationOne: event.target.value }))} />
-          </label>
-          <label>
-            <span>Question 2</span>
-            <textarea value={quizForm.questionTwo} onChange={(event) => setQuizForm((current) => ({ ...current, questionTwo: event.target.value }))} />
-          </label>
-          <label>
-            <span>Options 2</span>
-            <input value={quizForm.optionTwo} onChange={(event) => setQuizForm((current) => ({ ...current, optionTwo: event.target.value }))} />
-          </label>
-          <label>
-            <span>Correct option 2</span>
-            <input min={1} max={4} type="number" value={quizForm.correctTwo + 1} onChange={(event) => setQuizForm((current) => ({ ...current, correctTwo: Number(event.target.value) - 1 }))} />
-          </label>
-          <label>
-            <span>Explanation 2</span>
-            <input value={quizForm.explanationTwo} onChange={(event) => setQuizForm((current) => ({ ...current, explanationTwo: event.target.value }))} />
-          </label>
-          <button
-            className="textButton fullWidth"
-            onClick={() =>
-              void runAction("create-quiz", async () => {
-                const quiz = await createQuiz(token ?? "", {
-                  classId: quizForm.classId || firstClassId,
-                  title: quizForm.title,
-                  questions: [
-                    {
-                      prompt: quizForm.questionOne,
-                      options: quizForm.optionOne.split(",").map((option) => option.trim()).filter(Boolean),
-                      correctIndex: quizForm.correctOne,
-                      explanation: quizForm.explanationOne
-                    },
-                    {
-                      prompt: quizForm.questionTwo,
-                      options: quizForm.optionTwo.split(",").map((option) => option.trim()).filter(Boolean),
-                      correctIndex: quizForm.correctTwo,
-                      explanation: quizForm.explanationTwo
-                    }
-                  ]
-                });
-                await publishQuiz(token ?? "", quiz.id);
-              })
-            }
-            type="button"
-          >
-            Create and publish
-          </button>
-          <button
-            className="textButton fullWidth secondary"
-            onClick={() =>
-              void runAction("bank-quiz", async () => {
-                const questionIds = (lms?.questionBank ?? []).filter((question) => question.approved).slice(0, 3).map((question) => question.id);
-                const quiz = await createQuizFromBank(token ?? "", {
-                  classId: quizForm.classId || firstClassId,
-                  title: `${quizForm.title} bank`,
-                  questionIds
-                });
-                await publishQuiz(token ?? "", quiz.id);
-              })
-            }
-            type="button"
-          >
-            Publish from bank
-          </button>
-        </div>
-      </article> : null}
+          <div className="workflowLayout">
+            <div className="workflowMain">
+              {teacherWorkflow === "assignment" ? (
+                <>
+                  <div className="workflowHeader">
+                    <div>
+                      <span className="sectionEyebrow">Assignment</span>
+                      <h2>Create assignment</h2>
+                    </div>
+                    <span className="status approved">Editable before publish</span>
+                  </div>
+                  <div className="formStack">
+                    <label>
+                      <span>Class</span>
+                      <select
+                        value={assignmentForm.classId}
+                        onChange={(event) => setAssignmentForm((current) => ({ ...current, classId: event.target.value }))}
+                      >
+                        {(lms?.classes ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{item.name} {item.section}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Due</span>
+                      <input type="datetime-local" value={assignmentForm.dueAt} onChange={(event) => setAssignmentForm((current) => ({ ...current, dueAt: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <input value={assignmentForm.title} onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Points</span>
+                      <input defaultValue="100" min={0} type="number" />
+                    </label>
+                    <label>
+                      <span>Instructions</span>
+                      <textarea value={assignmentForm.instructions} onChange={(event) => setAssignmentForm((current) => ({ ...current, instructions: event.target.value }))} />
+                    </label>
+                    <div className="toggleList fullWidth">
+                      <label><input type="checkbox" defaultChecked /> Allow late submissions</label>
+                      <label><input type="checkbox" /> Allow resubmission</label>
+                    </div>
+                    <button
+                      className="textButton fullWidth"
+                      onClick={() =>
+                        void runAction("create-assignment", () =>
+                          createAssignment(token ?? "", {
+                            classId: assignmentForm.classId || firstClassId,
+                            title: assignmentForm.title,
+                            instructions: assignmentForm.instructions,
+                            dueAt: new Date(assignmentForm.dueAt).toISOString()
+                          })
+                        )
+                      }
+                      type="button"
+                    >
+                      Publish assignment
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {teacherWorkflow === "material" ? (
+                <>
+                  <div className="workflowHeader">
+                    <div>
+                      <span className="sectionEyebrow">Material</span>
+                      <h2>Upload class material</h2>
+                    </div>
+                    <span className="status approved">{materialForm.kind}</span>
+                  </div>
+                  <div className="formStack">
+                    <label>
+                      <span>Class</span>
+                      <select value={materialForm.classId} onChange={(event) => setMaterialForm((current) => ({ ...current, classId: event.target.value }))}>
+                        {(lms?.classes ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{item.name} {item.section}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Kind</span>
+                      <select value={materialForm.kind} onChange={(event) => setMaterialForm((current) => ({ ...current, kind: event.target.value as "link" | "note" | "file" }))}>
+                        <option value="note">Text note</option>
+                        <option value="link">Link</option>
+                        <option value="file">File upload</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <input value={materialForm.title} onChange={(event) => setMaterialForm((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Visibility</span>
+                      <select defaultValue="published">
+                        <option value="published">Published to students</option>
+                        <option value="draft">Draft</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{materialForm.kind === "link" ? "URL" : "Description"}</span>
+                      <textarea value={materialForm.content} onChange={(event) => setMaterialForm((current) => ({ ...current, content: event.target.value }))} />
+                    </label>
+                    {materialForm.kind === "file" ? (
+                      <label>
+                        <span>Upload</span>
+                        <input
+                          type="file"
+                          onChange={(event) => setMaterialForm((current) => ({ ...current, file: event.target.files?.[0] ?? null }))}
+                        />
+                      </label>
+                    ) : null}
+                    <button
+                      className="textButton fullWidth"
+                      onClick={() =>
+                        void runAction("create-material", async () => {
+                          if (materialForm.kind === "file" && materialForm.file) {
+                            await uploadMaterialFile(token ?? "", {
+                              classId: materialForm.classId || firstClassId,
+                              title: materialForm.title,
+                              file: materialForm.file
+                            });
+                            setMaterialForm((current) => ({ ...current, kind: "note", file: null }));
+                            setActiveSection("library");
+                            return;
+                          }
+                          if (materialForm.kind === "file") {
+                            throw new Error("Choose a file before saving this material");
+                          }
+                          await createMaterial(token ?? "", {
+                            classId: materialForm.classId || firstClassId,
+                            title: materialForm.title,
+                            kind: materialForm.kind,
+                            content: materialForm.content
+                          });
+                          setActiveSection("library");
+                        })
+                      }
+                      type="button"
+                    >
+                      Save material
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {teacherWorkflow === "quiz" ? (
+                <>
+                  <div className="workflowHeader">
+                    <div>
+                      <span className="sectionEyebrow">Quiz</span>
+                      <h2>Create quiz</h2>
+                    </div>
+                    <button
+                      className="iconTextButton"
+                      onClick={() =>
+                        void runAction("bank-quiz", async () => {
+                          const questionIds = (lms?.questionBank ?? []).filter((question) => question.approved).slice(0, 3).map((question) => question.id);
+                          const quiz = await createQuizFromBank(token ?? "", {
+                            classId: quizForm.classId || firstClassId,
+                            title: `${quizForm.title} bank`,
+                            questionIds
+                          });
+                          await publishQuiz(token ?? "", quiz.id);
+                        })
+                      }
+                      type="button"
+                    >
+                      <ListChecks size={16} /> From bank
+                    </button>
+                  </div>
+                  <div className="formStack">
+                    <label>
+                      <span>Class</span>
+                      <select value={quizForm.classId} onChange={(event) => setQuizForm((current) => ({ ...current, classId: event.target.value }))}>
+                        {(lms?.classes ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{item.name} {item.section}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Title</span>
+                      <input value={quizForm.title} onChange={(event) => setQuizForm((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Question 1</span>
+                      <textarea value={quizForm.questionOne} onChange={(event) => setQuizForm((current) => ({ ...current, questionOne: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Question 2</span>
+                      <textarea value={quizForm.questionTwo} onChange={(event) => setQuizForm((current) => ({ ...current, questionTwo: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Options 1</span>
+                      <input value={quizForm.optionOne} onChange={(event) => setQuizForm((current) => ({ ...current, optionOne: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Options 2</span>
+                      <input value={quizForm.optionTwo} onChange={(event) => setQuizForm((current) => ({ ...current, optionTwo: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Correct option 1</span>
+                      <input min={1} max={4} type="number" value={quizForm.correctOne + 1} onChange={(event) => setQuizForm((current) => ({ ...current, correctOne: Number(event.target.value) - 1 }))} />
+                    </label>
+                    <label>
+                      <span>Correct option 2</span>
+                      <input min={1} max={4} type="number" value={quizForm.correctTwo + 1} onChange={(event) => setQuizForm((current) => ({ ...current, correctTwo: Number(event.target.value) - 1 }))} />
+                    </label>
+                    <label>
+                      <span>Explanation 1</span>
+                      <input value={quizForm.explanationOne} onChange={(event) => setQuizForm((current) => ({ ...current, explanationOne: event.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Explanation 2</span>
+                      <input value={quizForm.explanationTwo} onChange={(event) => setQuizForm((current) => ({ ...current, explanationTwo: event.target.value }))} />
+                    </label>
+                    <button
+                      className="textButton fullWidth"
+                      onClick={() =>
+                        void runAction("create-quiz", async () => {
+                          const quiz = await createQuiz(token ?? "", {
+                            classId: quizForm.classId || firstClassId,
+                            title: quizForm.title,
+                            questions: [
+                              {
+                                prompt: quizForm.questionOne,
+                                options: quizForm.optionOne.split(",").map((option) => option.trim()).filter(Boolean),
+                                correctIndex: quizForm.correctOne,
+                                explanation: quizForm.explanationOne
+                              },
+                              {
+                                prompt: quizForm.questionTwo,
+                                options: quizForm.optionTwo.split(",").map((option) => option.trim()).filter(Boolean),
+                                correctIndex: quizForm.correctTwo,
+                                explanation: quizForm.explanationTwo
+                              }
+                            ]
+                          });
+                          await publishQuiz(token ?? "", quiz.id);
+                        })
+                      }
+                      type="button"
+                    >
+                      Create and publish quiz
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {teacherWorkflow === "rubric" ? (
+                <>
+                  <div className="workflowHeader">
+                    <div>
+                      <span className="sectionEyebrow">Rubric</span>
+                      <h2>Rubric builder</h2>
+                    </div>
+                    <button
+                      className="iconTextButton"
+                      onClick={() =>
+                        setRubricRows([
+                          { criterion: "Concept understanding", weight: "35", proficient: `Shows clear understanding of ${aiForm.topic}` },
+                          { criterion: "Process", weight: "35", proficient: "Uses a valid method and explains reasoning" },
+                          { criterion: "Communication", weight: "30", proficient: "Presents final answer with correct notation" }
+                        ])
+                      }
+                      type="button"
+                    >
+                      <Wand2 size={16} /> Draft rubric
+                    </button>
+                  </div>
+                  <div className="rubricGrid">
+                    <span>Criterion</span>
+                    <span>Weight</span>
+                    <span>Proficient evidence</span>
+                    {rubricRows.map((row, index) => (
+                      <div className="rubricRow" key={row.criterion}>
+                        <input value={row.criterion} onChange={(event) => setRubricRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, criterion: event.target.value } : item))} />
+                        <input value={row.weight} onChange={(event) => setRubricRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, weight: event.target.value } : item))} />
+                        <input value={row.proficient} onChange={(event) => setRubricRows((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, proficient: event.target.value } : item))} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="notice compact">Rubrics are drafted locally in this screen until a persisted rubric API is added.</div>
+                </>
+              ) : null}
+
+              {teacherWorkflow === "calendar" ? (
+                <>
+                  <div className="workflowHeader">
+                    <div>
+                      <span className="sectionEyebrow">Calendar</span>
+                      <h2>Lesson plan</h2>
+                    </div>
+                    <button
+                      className="iconTextButton"
+                      onClick={() =>
+                        setCalendarPlan([
+                          `Warm-up: diagnose prior knowledge for ${aiForm.topic}`,
+                          "Teach: model one example and pause for student checks",
+                          "Practice: assign class material, then publish a short quiz"
+                        ])
+                      }
+                      type="button"
+                    >
+                      <Sparkles size={16} /> Suggest sequence
+                    </button>
+                  </div>
+                  <div className="formStack">
+                    <label>
+                      <span>Class</span>
+                      <select defaultValue={firstClassId}>
+                        {(lms?.classes ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>{item.name} {item.section}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Topic</span>
+                      <input value={aiForm.topic} onChange={(event) => setAiForm((current) => ({ ...current, topic: event.target.value }))} />
+                    </label>
+                  </div>
+                  <div className="stepList">
+                    {calendarPlan.map((step, index) => (
+                      <div key={step}>
+                        <span>{index + 1}</span>
+                        <strong>{step}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="notice compact">Calendar items are planned here; persistent calendar scheduling needs a backend calendar endpoint.</div>
+                </>
+              ) : null}
+            </div>
+
+            <aside className="aiSidePanel">
+              <div className="panelHeader">
+                <div>
+                  <h2>AI assist</h2>
+                  <span>Reviewable drafts only</span>
+                </div>
+                <Sparkles size={20} />
+              </div>
+              <div className="formStack single">
+                <label>
+                  <span>Topic or objective</span>
+                  <input value={aiForm.topic} onChange={(event) => setAiForm((current) => ({ ...current, topic: event.target.value }))} />
+                </label>
+                <label>
+                  <span>Question count</span>
+                  <input
+                    min={1}
+                    max={5}
+                    type="number"
+                    value={aiForm.questionCount}
+                    onChange={(event) => setAiForm((current) => ({ ...current, questionCount: Number(event.target.value) }))}
+                  />
+                </label>
+              </div>
+              <button
+                className="textButton fullWidth secondary"
+                onClick={() =>
+                  void runAction("generate-ai", () =>
+                    generateAiDrafts(token ?? "", { topic: aiForm.topic, questionCount: aiForm.questionCount })
+                  )
+                }
+                type="button"
+              >
+                Generate question drafts
+              </button>
+              <div className="mappingList">
+                {(lms?.questionBank ?? []).slice(0, 3).map((question) => (
+                  <div key={question.id}>
+                    <strong>{question.prompt}</strong>
+                    <span>{question.source ?? "manual"} - {question.approved ? "approved" : "draft"}</span>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </div>
+        </article>
+      ) : null}
 
       {activeSection === "overview" || activeSection === "review" ? <article className="panel">
         <h2>Submissions</h2>
