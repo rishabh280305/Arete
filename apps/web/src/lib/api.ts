@@ -260,10 +260,15 @@ export type Person = {
   roles: string[];
 };
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
+const configuredApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api/v1";
+
+function apiUrl(path: string): string {
+  const baseUrl = typeof window === "undefined" ? configuredApiBaseUrl : "/api/arete/proxy";
+  return `${baseUrl}${path}`;
+}
 
 export async function seedDemoData(): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/auth/dev/seed`, { method: "POST" });
+  const response = await fetch(apiUrl("/auth/dev/seed"), { method: "POST" });
   if (!response.ok) {
     throw new Error("Demo accounts could not be created");
   }
@@ -274,7 +279,7 @@ export async function resetDemoData(): Promise<void> {
 }
 
 export async function login(email: string, password: string, role: string, schoolSlug = "northview"): Promise<LoginResult> {
-  const response = await fetch(`${apiBaseUrl}/auth/login`, {
+  const response = await fetch(apiUrl("/auth/login"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email, password, schoolSlug, role })
@@ -300,7 +305,7 @@ export async function createClerkSession(role: string, schoolSlug = "northview")
 }
 
 export async function fetchDashboard(token: string): Promise<AreteDashboard> {
-  const response = await fetch(`${apiBaseUrl}/dashboard`, {
+  const response = await fetch(apiUrl("/dashboard"), {
     cache: "no-store",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -312,7 +317,7 @@ export async function fetchDashboard(token: string): Promise<AreteDashboard> {
 }
 
 export async function approveQuestion(token: string, id: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/dashboard/questions/${id}/approve`, {
+  const response = await fetch(apiUrl(`/dashboard/questions/${id}/approve`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -322,7 +327,7 @@ export async function approveQuestion(token: string, id: string): Promise<void> 
 }
 
 export async function startImport(token: string, id: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/dashboard/imports/${id}/start`, {
+  const response = await fetch(apiUrl(`/dashboard/imports/${id}/start`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -332,7 +337,7 @@ export async function startImport(token: string, id: string): Promise<void> {
 }
 
 export async function fetchLmsOverview(token: string): Promise<LmsOverview> {
-  const response = await fetch(`${apiBaseUrl}/lms/overview`, {
+  const response = await fetch(apiUrl("/lms/overview"), {
     cache: "no-store",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -344,7 +349,7 @@ export async function fetchLmsOverview(token: string): Promise<LmsOverview> {
 }
 
 export async function fetchActivity(token: string): Promise<ActivityFeed> {
-  const response = await fetch(`${apiBaseUrl}/activity`, {
+  const response = await fetch(apiUrl("/activity"), {
     cache: "no-store",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -356,7 +361,7 @@ export async function fetchActivity(token: string): Promise<ActivityFeed> {
 }
 
 export async function markNotificationRead(token: string, id: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/activity/notifications/${id}/read`, {
+  const response = await fetch(apiUrl(`/activity/notifications/${id}/read`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -366,7 +371,7 @@ export async function markNotificationRead(token: string, id: string): Promise<v
 }
 
 export async function fetchPeople(token: string): Promise<Person[]> {
-  const response = await fetch(`${apiBaseUrl}/people`, {
+  const response = await fetch(apiUrl("/people"), {
     cache: "no-store",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -381,7 +386,7 @@ export async function createPerson(
   token: string,
   input: { email: string; displayName: string; roles: string[] }
 ): Promise<Person> {
-  const response = await fetch(`${apiBaseUrl}/people`, {
+  const response = await fetch(apiUrl("/people"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -399,7 +404,7 @@ export async function createSchool(input: {
   adminEmail: string;
   adminName: string;
 }): Promise<{ school: { id: string; name: string; slug: string }; admin: Person }> {
-  const response = await fetch(`${apiBaseUrl}/people/schools`, {
+  const response = await fetch(apiUrl("/people/schools"), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -412,7 +417,7 @@ export async function createSchool(input: {
 }
 
 export async function linkParent(token: string, input: { parentUserId: string; studentUserId: string }): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/people/parent-links`, {
+  const response = await fetch(apiUrl("/people/parent-links"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -426,7 +431,7 @@ export async function createAssignment(
   token: string,
   input: { classId: string; title: string; instructions: string; dueAt: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/assignments`, {
+  const response = await fetch(apiUrl("/lms/assignments"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -440,7 +445,7 @@ export async function enrollStudent(
   token: string,
   input: { classId: string; studentUserId: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/classes/enrollments`, {
+  const response = await fetch(apiUrl("/lms/classes/enrollments"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -458,7 +463,7 @@ export async function markAttendance(
     records: Array<{ studentUserId: string; status: "present" | "absent" | "late" | "excused"; note?: string }>;
   }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/attendance`, {
+  const response = await fetch(apiUrl("/lms/attendance"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -472,7 +477,7 @@ export async function createClass(
   token: string,
   input: { name: string; section: string; subject: string; teacherUserId?: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/classes`, {
+  const response = await fetch(apiUrl("/lms/classes"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -486,7 +491,7 @@ export async function createMaterial(
   token: string,
   input: { classId: string; title: string; kind: "link" | "note" | "file"; content: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/materials`, {
+  const response = await fetch(apiUrl("/lms/materials"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -513,7 +518,7 @@ export async function uploadMaterialFile(
   input: { classId: string; title: string; file: File }
 ): Promise<void> {
   const dataBase64 = await fileToBase64(input.file);
-  const response = await fetch(`${apiBaseUrl}/lms/materials/upload`, {
+  const response = await fetch(apiUrl("/lms/materials/upload"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({
@@ -530,7 +535,7 @@ export async function uploadMaterialFile(
 }
 
 export async function downloadMaterialFile(token: string, materialId: string, filename: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/materials/${materialId}/download`, {
+  const response = await fetch(apiUrl(`/lms/materials/${materialId}/download`), {
     headers: { authorization: `Bearer ${token}` }
   });
   if (!response.ok) {
@@ -556,7 +561,7 @@ export async function createQuiz(
     questions: Array<{ prompt: string; options: string[]; correctIndex: number; explanation: string }>;
   }
 ): Promise<{ id: string }> {
-  const response = await fetch(`${apiBaseUrl}/lms/quizzes`, {
+  const response = await fetch(apiUrl("/lms/quizzes"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -571,7 +576,7 @@ export async function createQuizFromBank(
   token: string,
   input: { classId: string; title: string; questionIds: string[] }
 ): Promise<{ id: string }> {
-  const response = await fetch(`${apiBaseUrl}/lms/quizzes/from-bank`, {
+  const response = await fetch(apiUrl("/lms/quizzes/from-bank"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -583,7 +588,7 @@ export async function createQuizFromBank(
 }
 
 export async function publishQuiz(token: string, id: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/quizzes/${id}/publish`, {
+  const response = await fetch(apiUrl(`/lms/quizzes/${id}/publish`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -596,7 +601,7 @@ export async function submitQuiz(
   token: string,
   input: { quizId: string; answers: number[] }
 ): Promise<{ score: number; correct: number; total: number }> {
-  const response = await fetch(`${apiBaseUrl}/lms/quizzes/attempts`, {
+  const response = await fetch(apiUrl("/lms/quizzes/attempts"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -611,7 +616,7 @@ export async function submitPracticeAttempt(
   token: string,
   input: { questionId: string; selectedIndex: number }
 ): Promise<{ correct: boolean; explanation: string }> {
-  const response = await fetch(`${apiBaseUrl}/lms/practice/attempts`, {
+  const response = await fetch(apiUrl("/lms/practice/attempts"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -627,7 +632,7 @@ export async function submitAssignment(
   token: string,
   input: { assignmentId: string; response: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/assignments/submissions`, {
+  const response = await fetch(apiUrl("/lms/assignments/submissions"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -641,7 +646,7 @@ export async function gradeSubmission(
   token: string,
   input: { submissionId: string; score: number; feedback: string }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/assignments/submissions/grade`, {
+  const response = await fetch(apiUrl("/lms/assignments/submissions/grade"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -655,7 +660,7 @@ export async function generateAiDrafts(
   token: string,
   input: { topic: string; questionCount: number }
 ): Promise<void> {
-  const response = await fetch(`${apiBaseUrl}/lms/ai/drafts`, {
+  const response = await fetch(apiUrl("/lms/ai/drafts"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify(input)
@@ -666,7 +671,7 @@ export async function generateAiDrafts(
 }
 
 export async function fetchMigrationSources(): Promise<MigrationSource[]> {
-  const response = await fetch(`${apiBaseUrl}/migration/sources`, { cache: "no-store" });
+  const response = await fetch(apiUrl("/migration/sources"), { cache: "no-store" });
   if (!response.ok) {
     throw new Error("Migration sources could not be loaded");
   }
@@ -678,7 +683,7 @@ export async function createMigrationWizard(
   token: string,
   source: MigrationSource["id"]
 ): Promise<MigrationWizard> {
-  const response = await fetch(`${apiBaseUrl}/migration/wizards`, {
+  const response = await fetch(apiUrl("/migration/wizards"), {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ source })
@@ -691,7 +696,7 @@ export async function createMigrationWizard(
 }
 
 export async function analyzeMigration(token: string, id: string): Promise<MigrationWizard> {
-  const response = await fetch(`${apiBaseUrl}/migration/wizards/${id}/analyze`, {
+  const response = await fetch(apiUrl(`/migration/wizards/${id}/analyze`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -703,7 +708,7 @@ export async function analyzeMigration(token: string, id: string): Promise<Migra
 }
 
 export async function validateMigration(token: string, id: string): Promise<MigrationWizard> {
-  const response = await fetch(`${apiBaseUrl}/migration/wizards/${id}/validate`, {
+  const response = await fetch(apiUrl(`/migration/wizards/${id}/validate`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -715,7 +720,7 @@ export async function validateMigration(token: string, id: string): Promise<Migr
 }
 
 export async function skipInvalidMigrationRows(token: string, id: string): Promise<MigrationWizard> {
-  const response = await fetch(`${apiBaseUrl}/migration/wizards/${id}/skip-invalid`, {
+  const response = await fetch(apiUrl(`/migration/wizards/${id}/skip-invalid`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
@@ -727,7 +732,7 @@ export async function skipInvalidMigrationRows(token: string, id: string): Promi
 }
 
 export async function commitMigration(token: string, id: string): Promise<MigrationWizard> {
-  const response = await fetch(`${apiBaseUrl}/migration/wizards/${id}/commit`, {
+  const response = await fetch(apiUrl(`/migration/wizards/${id}/commit`), {
     method: "POST",
     headers: { authorization: `Bearer ${token}` }
   });
