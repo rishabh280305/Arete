@@ -22,7 +22,11 @@ export class HealthController {
         },
         databaseUrl: process.env.DATABASE_URL ? "configured" : "missing",
         redisUrl: process.env.REDIS_URL ? "configured" : "missing",
-        objectStorage: process.env.S3_BUCKET ? "configured" : "missing"
+        objectStorage: process.env.BLOB_READ_WRITE_TOKEN
+          ? `configured:${process.env.BLOB_ACCESS === "public" ? "vercel_blob_public" : "vercel_blob_private"}`
+          : process.env.S3_BUCKET
+            ? "configured:s3"
+            : "missing"
       }
     };
   }
