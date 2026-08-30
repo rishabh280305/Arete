@@ -9,11 +9,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const clerkEnabled = process.env.NEXT_PUBLIC_CLERK_ENABLED === "true";
 
   return (
     <html lang="en">
       <body>
-        {publishableKey ? (
+        {publishableKey && clerkEnabled ? (
           <ClerkProvider publishableKey={publishableKey}>{children}</ClerkProvider>
         ) : (
           children

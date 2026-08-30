@@ -86,14 +86,6 @@ const nav: Array<{ id: View; label: string }> = [
   { id: "platform", label: "Owner" }
 ];
 
-const accountPresets: Record<string, { label: string; role: string }> = {
-  "student@arete.local": { label: "Student", role: "student" },
-  "teacher@arete.local": { label: "Teacher", role: "teacher" },
-  "parent@arete.local": { label: "Parent", role: "parent" },
-  "admin@arete.local": { label: "School Admin", role: "school_admin" },
-  "owner@arete.local": { label: "Owner", role: "platform_admin" }
-};
-
 const rolePresets: Array<{ view: View; role: string; label: string; email: string }> = [
   { view: "student", role: "student", label: "Student", email: "student@arete.local" },
   { view: "teacher", role: "teacher", label: "Teacher", email: "teacher@arete.local" },
@@ -119,55 +111,48 @@ function viewFromRole(role: string): View {
   return "student";
 }
 
-const viewPermissions: Record<View, string[]> = {
-  student: ["student"],
-  teacher: ["teacher", "school_admin"],
-  parent: ["parent"],
-  admin: ["school_admin"],
-  platform: ["platform_admin"]
-};
-
 const sectionNav: Record<View, Array<{ id: SectionId; label: string }>> = {
   student: [
-    { id: "overview", label: "Overview" },
-    { id: "work", label: "Assignments" },
+    { id: "overview", label: "Today" },
+    { id: "work", label: "Classwork" },
     { id: "practice", label: "Practice" },
-    { id: "attendance", label: "Attendance" },
-    { id: "library", label: "Materials" }
+    { id: "library", label: "Resources" },
+    { id: "attendance", label: "Attendance" }
   ],
   teacher: [
-    { id: "overview", label: "Overview" },
-    { id: "author", label: "Author" },
-    { id: "review", label: "Review" },
-    { id: "library", label: "Library" },
-    { id: "attendance", label: "Attendance" },
-    { id: "classes", label: "Classes" }
+    { id: "overview", label: "Dashboard" },
+    { id: "classes", label: "Classes" },
+    { id: "author", label: "Classwork" },
+    { id: "library", label: "Resources" },
+    { id: "review", label: "Grades" },
+    { id: "attendance", label: "Attendance" }
   ],
   parent: [
-    { id: "overview", label: "Overview" },
+    { id: "overview", label: "Summary" },
     { id: "children", label: "Children" },
-    { id: "work", label: "Work" },
-    { id: "attendance", label: "Attendance" },
-    { id: "library", label: "Materials" }
+    { id: "work", label: "Classwork" },
+    { id: "library", label: "Resources" },
+    { id: "attendance", label: "Attendance" }
   ],
   admin: [
-    { id: "overview", label: "Overview" },
-    { id: "people", label: "People" },
+    { id: "overview", label: "Operations" },
     { id: "classes", label: "Classes" },
+    { id: "people", label: "People" },
     { id: "attendance", label: "Attendance" },
     { id: "migration", label: "Migration" },
-    { id: "analytics", label: "Analytics" }
+    { id: "analytics", label: "Reports" }
   ],
   platform: [
     { id: "overview", label: "Overview" },
     { id: "schools", label: "Schools" },
     { id: "people", label: "People" },
-    { id: "analytics", label: "Analytics" }
+    { id: "analytics", label: "Usage" }
   ]
 };
 
 export function AreteDashboardShell() {
-  const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const clerkConfigured =
+    process.env.NEXT_PUBLIC_CLERK_ENABLED === "true" && Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
   const [clerkEnabled, setClerkEnabled] = useState(false);
   const [activeView, setActiveView] = useState<View>("student");
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
@@ -312,19 +297,8 @@ export function AreteDashboardShell() {
       return "Loading";
     }
 
-    const section = sectionNav[activeView].find((item) => item.id === activeSection)?.label;
-    return {
-      student: "My day",
-      teacher: "Review queue",
-      parent: "Family",
-      admin: `${dashboard.school.name} operations`,
-      platform: "Control center"
-    }[activeView] + (section ? ` / ${section}` : "");
+    return sectionNav[activeView].find((item) => item.id === activeSection)?.label ?? "Overview";
   }, [activeSection, activeView, dashboard]);
-
-  const visibleNav = dashboard
-    ? nav.filter((item) => dashboard.user.roles.some((role) => viewPermissions[item.id].includes(role)))
-    : nav;
 
   if (!token) {
     return (
@@ -352,6 +326,7 @@ export function AreteDashboardShell() {
           <div>
             <span>{dashboard?.school.name ?? selectedSchoolSlug}</span>
             <strong>{dashboard?.user.displayName ?? selectedAccount}</strong>
+            {dashboard ? <small>{nav.find((item) => item.id === activeView)?.label}</small> : null}
           </div>
           <div className="accountActions">
             {clerkEnabled ? <UserButton /> : null}
@@ -364,23 +339,9 @@ export function AreteDashboardShell() {
           </div>
         </section>
 
-        <nav>
-          {visibleNav.map((item) => (
-            <button
-              className={item.id === activeView ? "navItem active" : "navItem"}
-              key={item.id}
-              onClick={() => setActiveView(item.id)}
-              type="button"
-            >
-              {item.label}
-              <ChevronRight size={16} />
-            </button>
-          ))}
-        </nav>
-
         {dashboard ? (
-          <nav className="sectionNav">
-            <span>Sections</span>
+          <nav className="sectionNav" aria-label="Workspace sections">
+            <span>Workspace</span>
             {sectionNav[activeView].map((item) => (
               <button
                 className={item.id === activeSection ? "navItem sub active" : "navItem sub"}
@@ -400,7 +361,7 @@ export function AreteDashboardShell() {
         <header className="topbar">
           <div>
             <h1>{pageTitle}</h1>
-            {dashboard ? <span>{dashboard.user.displayName} · {dashboard.school.name}</span> : null}
+            {dashboard ? <span>{dashboard.school.name} · {nav.find((item) => item.id === activeView)?.label}</span> : null}
           </div>
           <div className="topActions">
             <button aria-label="Refresh" onClick={() => void load()} type="button">
@@ -420,17 +381,21 @@ export function AreteDashboardShell() {
 
         {dashboard ? (
           <>
-            <section className="metricGrid">
-              {dashboard.metrics.map((metric) => (
-                <article className="metric" key={metric.label}>
-                  <span>{metric.label}</span>
-                  <strong>{metric.value}</strong>
-                  <small>{metric.delta}</small>
-                </article>
-              ))}
-            </section>
+            {activeSection === "overview" ? (
+              <>
+                <section className="metricGrid">
+                  {dashboard.metrics.map((metric) => (
+                    <article className="metric" key={metric.label}>
+                      <span>{metric.label}</span>
+                      <strong>{metric.value}</strong>
+                      <small>{metric.delta}</small>
+                    </article>
+                  ))}
+                </section>
 
-            <ActivityPanel activity={activity} runAction={runAction} token={token} />
+                <ActivityPanel activity={activity} runAction={runAction} token={token} />
+              </>
+            ) : null}
 
             {activeView === "student" ? (
               <StudentView
@@ -529,8 +494,8 @@ function LandingGate({
       <section className="landingHero">
         <div className="heroCopy">
           <span className="eyebrow">Arete</span>
-          <h1>One workspace for every school role.</h1>
-          <p>Pick a login, enter the workspace, and work inside that role without the sidebar trying to be five products at once.</p>
+          <h1>Choose your workspace.</h1>
+          <p>Select a role to open the matching dashboard, classwork, people, and progress tools.</p>
           <label className="schoolField">
             <span>School slug</span>
             <input suppressHydrationWarning value={schoolSlug} onChange={(event) => setSchoolSlug(event.target.value)} />
@@ -654,6 +619,10 @@ function ActivityPanel({
   );
 }
 
+function EmptyState({ children }: { children: string }) {
+  return <div className="emptyState">{children}</div>;
+}
+
 function ParentView({
   activeSection,
   dashboard,
@@ -759,7 +728,7 @@ function StudentView({
     <section className="contentGrid">
       {activeSection === "overview" || activeSection === "work" ? <article className="panel wide">
         <div className="panelHeader">
-          <h2>Today</h2>
+          <h2>Classwork due</h2>
           <GraduationCap size={22} />
         </div>
         <div className="taskList">
@@ -959,10 +928,11 @@ function TeacherView({
     <section className="contentGrid">
       {activeSection === "overview" || activeSection === "review" ? <article className="panel wide">
         <div className="panelHeader">
-          <h2>AI drafts</h2>
+          <h2>Review queue</h2>
           <BookOpen size={22} />
         </div>
         <div className="reviewList">
+          {!dashboard.teacher.drafts.length ? <EmptyState>No questions are waiting for review.</EmptyState> : null}
           {dashboard.teacher.drafts.map((question) => (
             <div className="reviewItem" key={question.id}>
               <div>
@@ -986,8 +956,8 @@ function TeacherView({
         </div>
       </article> : null}
 
-      {activeSection === "overview" || activeSection === "author" || activeSection === "classes" ? <article className="panel">
-        <h2>Author</h2>
+      {activeSection === "author" ? <article className="panel">
+        <h2>Create assignment</h2>
         <div className="formStack">
           <label>
             <span>Assignment class</span>
@@ -1069,7 +1039,7 @@ function TeacherView({
       </article> : null}
 
       {activeSection === "author" ? <article className="panel">
-        <h2>Materials</h2>
+        <h2>Add material</h2>
         <div className="formStack">
           <label>
             <span>Class</span>
@@ -1138,7 +1108,7 @@ function TeacherView({
       </article> : null}
 
       {activeSection === "author" ? <article className="panel">
-        <h2>Quiz</h2>
+        <h2>Create quiz</h2>
         <div className="formStack">
           <label>
             <span>Class</span>
@@ -1236,6 +1206,7 @@ function TeacherView({
       {activeSection === "overview" || activeSection === "review" ? <article className="panel">
         <h2>Submissions</h2>
         <div className="signalList">
+          {!(lms?.submissions ?? []).length ? <EmptyState>No submissions are waiting right now.</EmptyState> : null}
           {(lms?.submissions ?? []).map((submission) => (
             <div key={submission.id}>
               <span>{submission.studentName}</span>
@@ -1268,6 +1239,7 @@ function TeacherView({
       {activeSection === "library" || activeSection === "review" ? <article className="panel wide">
         <h2>Materials</h2>
         <div className="mappingList">
+          {!(lms?.materials ?? []).length ? <EmptyState>No resources have been added yet.</EmptyState> : null}
           {(lms?.materials ?? []).map((material) => (
             <div key={material.id}>
               <strong>{material.title}</strong>
@@ -1334,15 +1306,23 @@ function TeacherView({
       </article> : null}
 
       {activeSection === "overview" || activeSection === "classes" ? <article className="panel">
-        <h2>Class signals</h2>
+        <h2>{activeSection === "classes" ? "Classes" : "Class signals"}</h2>
         <div className="signalList">
-          {dashboard.teacher.classSignals.map((signal) => (
-            <div key={signal.label}>
-              <span>{signal.label}</span>
-              <strong>{signal.value}</strong>
-              <small>{signal.severity}</small>
-            </div>
-          ))}
+          {activeSection === "classes"
+            ? (lms?.classes ?? []).map((item) => (
+                <div key={item.id}>
+                  <span>{item.name} {item.section}</span>
+                  <strong>{item.subject}</strong>
+                  <small>{item.studentCount} students</small>
+                </div>
+              ))
+            : dashboard.teacher.classSignals.map((signal) => (
+                <div key={signal.label}>
+                  <span>{signal.label}</span>
+                  <strong>{signal.value}</strong>
+                  <small>{signal.severity}</small>
+                </div>
+              ))}
         </div>
       </article> : null}
       {activeSection === "attendance" ? <AttendanceManager lms={lms} runAction={runAction} token={token} /> : null}
@@ -1463,6 +1443,7 @@ function AttendanceManager({
             </div>
           </div>
         ))}
+        {!roster.length ? <EmptyState>No students are enrolled in this class yet.</EmptyState> : null}
       </div>
       <div className="detectedGrid">
         <div><span>Present rate</span><strong>{lms?.attendanceSummary.presentRate ?? 0}%</strong></div>
@@ -1506,7 +1487,7 @@ function AdminView({
 
   return (
     <section className="contentGrid">
-      {activeSection === "overview" || activeSection === "migration" ? <article className="panel wide">
+      {activeSection === "migration" ? <article className="panel wide">
         <div className="panelHeader">
           <h2>Migration</h2>
           <UploadCloud size={22} />
@@ -1656,8 +1637,8 @@ function AdminView({
         ))}
       </article> : null}
 
-      {activeSection === "overview" || activeSection === "classes" ? <article className="panel">
-        <h2>Controls</h2>
+      {activeSection === "classes" ? <article className="panel">
+        <h2>Create class</h2>
         <div className="formStack">
           <label>
             <span>Class name</span>
@@ -1722,7 +1703,7 @@ function AdminView({
 
       {activeSection === "analytics" ? <GradebookPanel lms={lms} /> : null}
 
-      {activeSection === "overview" || activeSection === "people" ? <PeoplePanel lms={lms} people={people} runAction={runAction} token={token} /> : null}
+      {activeSection === "people" ? <PeoplePanel lms={lms} people={people} runAction={runAction} token={token} /> : null}
     </section>
   );
 }
@@ -1754,7 +1735,7 @@ function PeoplePanel({
 
   return (
     <article className="panel">
-      <h2>People</h2>
+      <h2>Add people</h2>
       <div className="formStack">
         <label>
           <span>Name</span>
@@ -1786,7 +1767,7 @@ function PeoplePanel({
           }
           type="button"
         >
-          Create person
+          Add person
         </button>
         <label>
           <span>Parent</span>
@@ -1847,6 +1828,7 @@ function PeoplePanel({
         </button>
       </div>
       <div className="signalList">
+        {!people.length ? <EmptyState>No people have been added yet.</EmptyState> : null}
         {people.map((person) => (
           <div key={person.id}>
             <span>{person.email}</span>
