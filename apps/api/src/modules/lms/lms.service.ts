@@ -3,7 +3,7 @@ import { hasPermission } from "@arete/permissions";
 import type { ActiveTenantContext } from "@arete/types";
 import { createNotification, readLocalStore, recordAuditEvent, updateLocalStore } from "../../dev-store/local-store";
 import { generateQuestionsWithAi } from "./ai-question-generator";
-import { openLocalUpload, saveLocalUpload } from "./file-storage";
+import { openUpload, saveUpload } from "./file-storage";
 import { lmsState } from "./lms-state";
 
 @Injectable()
@@ -403,7 +403,7 @@ export class LmsService {
     return material;
   }
 
-  uploadMaterial(
+  async uploadMaterial(
     context: ActiveTenantContext,
     input: { classId: string; title: string; filename: string; contentType: string; dataBase64: string }
   ) {
@@ -416,9 +416,10 @@ export class LmsService {
       throw new NotFoundException("Class not found");
     }
 
-    const stored = saveLocalUpload({
+    const stored = await saveUpload({
       schoolId: context.schoolId,
       filename: input.filename,
+      contentType: input.contentType,
       dataBase64: input.dataBase64
     });
     const material = lmsState.createMaterial({
@@ -445,13 +446,13 @@ export class LmsService {
     return material;
   }
 
-  downloadMaterial(context: ActiveTenantContext, id: string) {
+  async downloadMaterial(context: ActiveTenantContext, id: string) {
     const material = this.visibleMaterials(context).find((candidate) => candidate.id === id);
     if (!material || material.kind !== "file" || !material.storageKey) {
       throw new NotFoundException("File material not found");
     }
 
-    const stream = openLocalUpload({ schoolId: context.schoolId, key: material.storageKey });
+    const stream = await openUpload({ schoolId: context.schoolId, key: material.storageKey });
     if (!stream) {
       throw new NotFoundException("Stored file not found");
     }

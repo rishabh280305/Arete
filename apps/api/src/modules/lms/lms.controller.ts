@@ -106,7 +106,7 @@ export class LmsController {
   @Get("materials/:id/download")
   async downloadMaterial(@Req() request: FastifyRequest, @Res() reply: FastifyReply, @Param("id") id: string) {
     const context = await getAuthContext(request);
-    const { material, stream } = this.lmsService.downloadMaterial(context, id);
+    const { material, stream } = await this.lmsService.downloadMaterial(context, id);
     reply.header("content-type", material.contentType ?? "application/octet-stream");
     reply.header("content-disposition", `attachment; filename="${(material.filename ?? material.title).replace(/"/g, "")}"`);
     return reply.send(stream);
