@@ -167,7 +167,8 @@ const sectionNav: Record<View, Array<{ id: SectionId; label: string }>> = {
 };
 
 export function AreteDashboardShell() {
-  const clerkEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+  const [clerkEnabled, setClerkEnabled] = useState(false);
   const [activeView, setActiveView] = useState<View>("student");
   const [activeSection, setActiveSection] = useState<SectionId>("overview");
   const [dashboard, setDashboard] = useState<AreteDashboard | null>(null);
@@ -210,13 +211,14 @@ export function AreteDashboardShell() {
   }
 
   useEffect(() => {
+    setClerkEnabled(clerkConfigured && !window.location.hostname.endsWith(".vercel.app"));
     const stored = window.localStorage.getItem("arete.accessToken");
     if (stored) {
       setToken(stored);
       void load(stored);
     }
     void fetchMigrationSources().then(setMigrationSources).catch(() => setMigrationSources([]));
-  }, []);
+  }, [clerkConfigured]);
 
   useEffect(() => {
     const sections = sectionNav[activeView];
