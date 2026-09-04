@@ -1605,7 +1605,17 @@ function TeacherView({
               ))}
         </div>
       </article> : null}
-      {activeSection === "classes" ? <TeacherClassroom lms={lms} onCreateClasswork={() => setActiveSection("author")} runAction={runAction} token={token} /> : null}
+      {activeSection === "classes" ? <TeacherClassroom
+        lms={lms}
+        onCreateClasswork={(classId) => {
+          setAssignmentForm((current) => ({ ...current, classId }));
+          setMaterialForm((current) => ({ ...current, classId }));
+          setQuizForm((current) => ({ ...current, classId }));
+          setActiveSection("author");
+        }}
+        runAction={runAction}
+        token={token}
+      /> : null}
       {activeSection === "attendance" ? <AttendanceManager lms={lms} runAction={runAction} token={token} /> : null}
     </section>
   );
@@ -1618,7 +1628,7 @@ function TeacherClassroom({
   token
 }: {
   lms: LmsOverview | null;
-  onCreateClasswork: () => void;
+  onCreateClasswork: (classId: string) => void;
   runAction: (id: string, action: () => Promise<void>) => Promise<void>;
   token: string | null;
 }) {
@@ -1708,7 +1718,7 @@ function TeacherClassroom({
                 </div>
               </div> : null}
               {classTab === "classwork" ? <div className="classworkBoard">
-                <div className="classworkBoardHeader"><div><strong>Classwork</strong><span>Assignments, materials, and quizzes for this class</span></div><button className="textButton" onClick={onCreateClasswork} type="button">Create</button></div>
+                <div className="classworkBoardHeader"><div><strong>Classwork</strong><span>Assignments, materials, and quizzes for this class</span></div><button className="textButton" onClick={() => onCreateClasswork(activeClass.id)} type="button">Create</button></div>
                 <div className="classworkItems">
                   {classAssignments.map((item) => <div key={item.id}><ClipboardList size={18} /><div><strong>{item.title}</strong><span>Assignment · Due {new Date(item.dueAt).toLocaleDateString()} · {item.submissions} submitted</span></div></div>)}
                   {classMaterials.map((item) => <div key={item.id}><FolderOpen size={18} /><div><strong>{item.title}</strong><span>Material · {item.kind}</span></div></div>)}
