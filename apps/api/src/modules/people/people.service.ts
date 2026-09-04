@@ -168,7 +168,7 @@ export class PeopleService {
       }
     });
 
-    createLocalUser(input, context.schoolId);
+    createLocalUser({ ...input, id: user.id }, context.schoolId);
     recordAuditEvent({ schoolId: context.schoolId, actorUserId: context.userId, action: "user.upserted", targetType: "user", targetId: user.id });
     createNotification({ schoolId: context.schoolId, userId: user.id, message: "Your Arete account is ready." });
 
