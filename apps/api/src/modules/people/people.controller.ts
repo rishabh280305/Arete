@@ -22,8 +22,9 @@ export class PeopleController {
   }
 
   @Post("schools")
-  createSchool(@Body() body: unknown) {
-    return this.peopleService.createSchool(parseBody(createSchoolSchema, body));
+  async createSchool(@Req() request: FastifyRequest, @Body() body: unknown) {
+    const context = await getAuthContext(request);
+    return this.peopleService.createSchool(context, parseBody(createSchoolSchema, body));
   }
 
   @Post("parent-links")

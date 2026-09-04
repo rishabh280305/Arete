@@ -399,21 +399,41 @@ export async function createPerson(
 }
 
 export async function createSchool(input: {
+  token: string;
   name: string;
   slug: string;
   adminEmail: string;
   adminName: string;
+  initialPassword: string;
 }): Promise<{ school: { id: string; name: string; slug: string }; admin: Person }> {
   const response = await fetch(apiUrl("/people/schools"), {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input)
+    headers: { authorization: `Bearer ${input.token}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      name: input.name,
+      slug: input.slug,
+      adminEmail: input.adminEmail,
+      adminName: input.adminName,
+      initialPassword: input.initialPassword
+    })
   });
   if (!response.ok) {
     throw new Error("School could not be created");
   }
 
   return response.json() as Promise<{ school: { id: string; name: string; slug: string }; admin: Person }>;
+}
+
+export async function switchSchool(token: string, schoolSlug: string): Promise<LoginResult> {
+  const response = await fetch(apiUrl("/auth/switch-school"), {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ schoolSlug })
+  });
+  if (!response.ok) {
+    throw new Error("School workspace could not be opened");
+  }
+  return response.json() as Promise<LoginResult>;
 }
 
 export async function linkParent(token: string, input: { parentUserId: string; studentUserId: string }): Promise<void> {

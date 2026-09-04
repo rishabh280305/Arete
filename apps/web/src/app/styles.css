@@ -272,6 +272,11 @@ textarea {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr);
   min-height: 100vh;
+  transition: grid-template-columns 180ms ease;
+}
+
+.shell.sidebarCollapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -285,7 +290,68 @@ textarea {
 }
 
 .sidebar .brand {
+  align-items: center;
+  display: flex;
+  gap: 10px;
   margin-bottom: 22px;
+}
+
+.sidebarToggle {
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0;
+  width: 30px;
+}
+
+.shell.sidebarCollapsed .sidebar {
+  padding: 22px 14px;
+}
+
+.shell.sidebarCollapsed .brand {
+  justify-content: center;
+}
+
+.shell.sidebarCollapsed .brand > strong,
+.shell.sidebarCollapsed .accountBox > div:first-child,
+.shell.sidebarCollapsed .sectionNav > span,
+.shell.sidebarCollapsed .navItem > span + svg {
+  display: none;
+}
+
+.shell.sidebarCollapsed .accountBox {
+  border-top: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.shell.sidebarCollapsed .accountActions {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.shell.sidebarCollapsed .navItem {
+  justify-content: center;
+  padding: 9px;
+}
+
+.shell.sidebarCollapsed .navItem span {
+  gap: 0;
+}
+
+.shell.sidebarCollapsed .navItem span svg {
+  height: 19px;
+  width: 19px;
+}
+
+.shell.sidebarCollapsed .navItem span {
+  font-size: 0;
 }
 
 .accountBox {
@@ -446,6 +512,75 @@ nav,
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+}
+
+.onboardingPanel {
+  display: grid;
+  gap: 18px;
+}
+
+.onboardingLayout {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.72fr);
+}
+
+.onboardingChecklist {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.onboardingChecklist strong {
+  color: #111827;
+}
+
+.onboardingChecklist span {
+  align-items: flex-start;
+  display: flex;
+  gap: 8px;
+}
+
+.onboardingChecklist svg {
+  color: var(--brand);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.provisionedSchool {
+  align-items: center;
+  background: var(--surface-tint);
+  border: 1px solid #cbd5ff;
+  border-radius: var(--radius);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.provisionedSchool strong,
+.provisionedSchool small {
+  display: block;
+}
+
+.provisionedSchool small {
+  margin-top: 4px;
+}
+
+.peopleWorkspace {
+  display: grid;
+  gap: 18px;
+}
+
+.workflowForm {
+  max-width: 540px;
+}
+
+.peopleDirectory {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .panel {
@@ -1023,7 +1158,9 @@ nav,
   .activityGrid,
   .contentGrid,
   .practiceSession,
-  .workflowLayout {
+  .workflowLayout,
+  .onboardingLayout,
+  .peopleDirectory {
     grid-template-columns: 1fr;
   }
 

@@ -42,7 +42,12 @@ export const createSchoolSchema = z.object({
   name: z.string().min(2).max(120),
   slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/),
   adminEmail: z.email().max(254),
-  adminName: z.string().min(2).max(120)
+  adminName: z.string().min(2).max(120),
+  initialPassword: z.string().min(10).max(200)
+});
+
+export const switchSchoolSchema = z.object({
+  schoolSlug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/)
 });
 
 export const createClassSchema = z.object({
@@ -174,6 +179,7 @@ export const applyMigrationMappingsSchema = z.object({
 
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
 export type CreateSchoolInput = z.infer<typeof createSchoolSchema>;
+export type SwitchSchoolInput = z.infer<typeof switchSchoolSchema>;
 export type CreateClassInput = z.infer<typeof createClassSchema>;
 export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
 export type UploadMaterialInput = z.infer<typeof uploadMaterialSchema>;

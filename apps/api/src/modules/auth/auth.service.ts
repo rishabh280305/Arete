@@ -381,6 +381,26 @@ export class AuthService {
     };
   }
 
+  async switchSchool(context: ActiveTenantContext, input: { schoolSlug: string }) {
+    const membership = await prisma.membership.findFirst({
+      where: { userId: context.userId, school: { slug: input.schoolSlug.toLowerCase() }, status: MembershipStatus.ACTIVE },
+      include: { user: true, school: true }
+    });
+    if (!membership) {
+      return null;
+    }
+    const roles = toClientRoles(membership.roles);
+    const accessToken = await signAccessToken(
+      { schoolId: membership.schoolId, userId: membership.userId, membershipId: membership.id, roles },
+      devAccessSecret
+    );
+    return {
+      accessToken,
+      user: { id: membership.user.id, email: membership.user.email, displayName: membership.user.displayName },
+      activeContext: { schoolId: membership.schoolId, schoolName: membership.school.name, membershipId: membership.id, roles }
+    };
+  }
+
   async fallbackLogin(body: { email: string; password: string; role?: string; schoolSlug?: string }) {
     if (body.password !== demoPassword) {
       return null;

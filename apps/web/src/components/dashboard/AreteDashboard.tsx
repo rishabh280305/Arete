@@ -19,7 +19,10 @@ import {
   GraduationCap,
   ListChecks,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCcw,
+  Search,
   ShieldCheck,
   Sparkles,
   UploadCloud,
@@ -66,6 +69,7 @@ import {
   submitAssignment,
   submitPracticeAttempt,
   submitQuiz,
+  switchSchool,
   uploadMaterialFile,
   validateMigration,
   startImport
@@ -181,6 +185,7 @@ export function AreteDashboardShell() {
   const [quizResult, setQuizResult] = useState<string | null>(null);
   const [migrationSources, setMigrationSources] = useState<MigrationSource[]>([]);
   const [migrationWizard, setMigrationWizard] = useState<MigrationWizard | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   async function load(nextToken = token) {
     if (!nextToken) {
@@ -266,6 +271,21 @@ export function AreteDashboardShell() {
       await load(result.accessToken);
   }
 
+  async function openProvisionedSchool(schoolSlug: string) {
+    if (!token) {
+      return;
+    }
+    setBusyId("open-school");
+    try {
+      setError(null);
+      await openWorkspace(await switchSchool(token, schoolSlug));
+    } catch (switchError) {
+      setError(switchError instanceof Error ? switchError.message : "School workspace could not be opened");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function signOut() {
     window.localStorage.removeItem("arete.accessToken");
     setToken(null);
@@ -326,11 +346,19 @@ export function AreteDashboardShell() {
   }
 
   return (
-    <main className="shell">
+    <main className={sidebarCollapsed ? "shell sidebarCollapsed" : "shell"}>
       <aside className="sidebar">
         <div className="brand">
           <div className="brandMark">A</div>
           <strong>Arete</strong>
+          <button
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="sidebarToggle"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            type="button"
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>
         </div>
 
         <section className="accountBox">
@@ -378,6 +406,7 @@ export function AreteDashboardShell() {
             {dashboard ? <span>{dashboard.school.name} · {nav.find((item) => item.id === activeView)?.label}</span> : null}
           </div>
           <div className="topActions">
+            <button aria-label="Search" type="button"><Search size={19} /></button>
             <button aria-label="Refresh" onClick={() => void load()} type="button">
               <RefreshCcw size={19} />
             </button>
@@ -451,7 +480,16 @@ export function AreteDashboardShell() {
               />
             ) : null}
             {activeView === "platform" ? (
-              <PlatformView activeSection={activeSection} dashboard={dashboard} lms={lms} people={people} runAction={runAction} token={token} />
+              <PlatformView
+                activeSection={activeSection}
+                busyId={busyId}
+                dashboard={dashboard}
+                lms={lms}
+                onOpenSchool={openProvisionedSchool}
+                people={people}
+                runAction={runAction}
+                token={token}
+              />
             ) : null}
           </>
         ) : null}
@@ -2017,11 +2055,24 @@ function PeoplePanel({
     studentUserId: students[0]?.id ?? "",
     classId: firstClass?.id ?? ""
   });
+  const [peopleMode, setPeopleMode] = useState<"add" | "link" | "enroll" | "directory">("add");
 
   return (
-    <article className="panel">
-      <h2>Add people</h2>
-      <div className="formStack">
+    <article className="panel wide peopleWorkspace">
+      <div className="workflowHeader">
+        <div>
+          <span className="sectionEyebrow">School setup</span>
+          <h2>People and rosters</h2>
+        </div>
+        <span className="status approved">{people.length} people</span>
+      </div>
+      <div className="modeTabs" aria-label="People workflow">
+        <button className={peopleMode === "add" ? "modeTab active" : "modeTab"} onClick={() => setPeopleMode("add")} type="button">Add person</button>
+        <button className={peopleMode === "link" ? "modeTab active" : "modeTab"} onClick={() => setPeopleMode("link")} type="button">Link parent</button>
+        <button className={peopleMode === "enroll" ? "modeTab active" : "modeTab"} onClick={() => setPeopleMode("enroll")} type="button">Enroll student</button>
+        <button className={peopleMode === "directory" ? "modeTab active" : "modeTab"} onClick={() => setPeopleMode("directory")} type="button">Directory</button>
+      </div>
+      {peopleMode === "add" ? <div className="formStack single workflowForm">
         <label>
           <span>Name</span>
           <input value={personForm.displayName} onChange={(event) => setPersonForm((current) => ({ ...current, displayName: event.target.value }))} />
@@ -2054,6 +2105,8 @@ function PeoplePanel({
         >
           Add person
         </button>
+      </div> : null}
+      {peopleMode === "link" ? <div className="formStack single workflowForm">
         <label>
           <span>Parent</span>
           <select value={relationshipForm.parentUserId} onChange={(event) => setRelationshipForm((current) => ({ ...current, parentUserId: event.target.value }))}>
@@ -2087,6 +2140,8 @@ function PeoplePanel({
         >
           Link parent
         </button>
+      </div> : null}
+      {peopleMode === "enroll" ? <div className="formStack single workflowForm">
         <label>
           <span>Class</span>
           <select value={relationshipForm.classId} onChange={(event) => setRelationshipForm((current) => ({ ...current, classId: event.target.value }))}>
@@ -2111,8 +2166,8 @@ function PeoplePanel({
         >
           Enroll student
         </button>
-      </div>
-      <div className="signalList">
+      </div> : null}
+      {peopleMode === "directory" ? <div className="signalList peopleDirectory">
         {!people.length ? <EmptyState>No people have been added yet.</EmptyState> : null}
         {people.map((person) => (
           <div key={person.id}>
@@ -2121,8 +2176,8 @@ function PeoplePanel({
             <small>{person.roles.join(", ")}</small>
           </div>
         ))}
-      </div>
-      {lms?.enrollments.length ? (
+      </div> : null}
+      {peopleMode === "directory" && lms?.enrollments.length ? (
         <>
           <h2>Roster</h2>
           <div className="mappingList">
@@ -2141,15 +2196,19 @@ function PeoplePanel({
 
 function PlatformView({
   activeSection,
+  busyId,
   dashboard,
   lms,
+  onOpenSchool,
   people,
   runAction,
   token
 }: {
   activeSection: SectionId;
+  busyId: string | null;
   dashboard: AreteDashboard;
   lms: LmsOverview | null;
+  onOpenSchool: (schoolSlug: string) => Promise<void>;
   people: Person[];
   runAction: (id: string, action: () => Promise<void>) => Promise<void>;
   token: string | null;
@@ -2158,8 +2217,10 @@ function PlatformView({
     name: "Arete School",
     slug: "arete-school",
     adminEmail: "school.admin@arete.local",
-    adminName: "School Admin"
+    adminName: "School Admin",
+    initialPassword: "Welcome@12345"
   });
+  const [provisionedSchool, setProvisionedSchool] = useState<{ name: string; slug: string; adminEmail: string } | null>(null);
 
   return (
     <section className="contentGrid">
@@ -2180,17 +2241,24 @@ function PlatformView({
         <h2>Needs attention</h2>
         <div className="alertLine">
           <CircleAlert size={18} />
-          <span>3 failed jobs are waiting for retry review.</span>
+          <span>Review usage and active schools before changing plan settings.</span>
         </div>
         <div className="alertLine">
           <Users size={18} />
-          <span>2 schools are mid-onboarding.</span>
+          <span>New schools open directly into their setup workspace.</span>
         </div>
       </article> : null}
 
-      {activeSection === "overview" || activeSection === "schools" ? <article className="panel">
-        <h2>Schools</h2>
-        <div className="formStack">
+      {activeSection === "overview" || activeSection === "schools" ? <article className="panel wide onboardingPanel">
+        <div className="workflowHeader">
+          <div>
+            <span className="sectionEyebrow">School onboarding</span>
+            <h2>Create a school workspace</h2>
+          </div>
+          <span className="status approved">Step 1 of 3</span>
+        </div>
+        <div className="onboardingLayout">
+          <div className="formStack">
           <label>
             <span>School name</span>
             <input value={schoolForm.name} onChange={(event) => setSchoolForm((current) => ({ ...current, name: event.target.value }))} />
@@ -2207,23 +2275,42 @@ function PlatformView({
             <span>Admin email</span>
             <input value={schoolForm.adminEmail} onChange={(event) => setSchoolForm((current) => ({ ...current, adminEmail: event.target.value }))} />
           </label>
-        <button
-          className="textButton fullWidth"
-          onClick={() =>
-            void runAction("create-school", () =>
-              createSchool({
-                name: schoolForm.name,
-                slug: schoolForm.slug,
-                adminEmail: schoolForm.adminEmail,
-                adminName: schoolForm.adminName
-              }).then(() => undefined)
-            )
-          }
-          type="button"
-        >
-          Create school
-        </button>
+            <label>
+              <span>Temporary admin password</span>
+              <input type="password" value={schoolForm.initialPassword} onChange={(event) => setSchoolForm((current) => ({ ...current, initialPassword: event.target.value }))} />
+            </label>
+            <button
+              className="textButton fullWidth"
+              onClick={() =>
+                void runAction("create-school", async () => {
+                  const result = await createSchool({ token: token ?? "", ...schoolForm });
+                  setProvisionedSchool({ name: result.school.name, slug: result.school.slug, adminEmail: result.admin.email });
+                })
+              }
+              type="button"
+            >
+              Create school workspace
+            </button>
+          </div>
+          <aside className="onboardingChecklist">
+            <strong>What happens next</strong>
+            <span><Check size={16} /> School and first administrator are created</span>
+            <span><Check size={16} /> Open the school to add classes and people</span>
+            <span><Check size={16} /> Link parents and enroll students when ready</span>
+          </aside>
         </div>
+        {provisionedSchool ? (
+          <div className="provisionedSchool">
+            <div>
+              <span className="sectionEyebrow">Ready</span>
+              <strong>{provisionedSchool.name} is ready for setup</strong>
+              <small>{provisionedSchool.adminEmail} is the first school administrator.</small>
+            </div>
+            <button className="textButton" disabled={busyId === "open-school"} onClick={() => void onOpenSchool(provisionedSchool.slug)} type="button">
+              Open school setup
+            </button>
+          </div>
+        ) : null}
       </article> : null}
 
       {activeSection === "people" ? <PeoplePanel lms={lms} people={people} runAction={runAction} token={token} /> : null}

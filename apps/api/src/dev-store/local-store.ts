@@ -350,12 +350,12 @@ export function createLocalUser(input: Omit<LocalUser, "id">, schoolId = "demo-s
   });
 }
 
-export function createLocalSchool(input: { name: string; slug: string; admin: { email: string; displayName: string } }) {
+export function createLocalSchool(input: { id?: string; name: string; slug: string; admin: { email: string; displayName: string } }) {
   return updateLocalStore((store) => {
     const slug = input.slug.toLowerCase();
     let school = store.schools.find((candidate) => candidate.slug === slug);
     if (!school) {
-      school = { id: `school-${randomUUID()}`, name: input.name, slug };
+      school = { id: input.id ?? `school-${randomUUID()}`, name: input.name, slug };
       store.schools.push(school);
       store.aiUsage.push({ schoolId: school.id, requests: 0, inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0 });
     }

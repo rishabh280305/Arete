@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Req, UnauthorizedException } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
-import { clerkSessionSchema } from "@arete/validation";
+import { clerkSessionSchema, switchSchoolSchema } from "@arete/validation";
 import { getAuthContext } from "../../common/auth-context";
 import { parseBody } from "../../common/parse-body";
 import { AuthService } from "./auth.service";
@@ -59,6 +59,16 @@ export class AuthController {
     }
     if (!result) {
       throw new UnauthorizedException("Could not create session");
+    }
+    return result;
+  }
+
+  @Post("switch-school")
+  async switchSchool(@Req() request: FastifyRequest, @Body() body: unknown) {
+    const context = await getAuthContext(request);
+    const result = await this.authService.switchSchool(context, parseBody(switchSchoolSchema, body));
+    if (!result) {
+      throw new UnauthorizedException("You do not have access to this school");
     }
     return result;
   }
