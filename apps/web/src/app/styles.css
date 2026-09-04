@@ -583,6 +583,145 @@ nav,
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.classWorkspace,
+.reviewWorkspace {
+  display: grid;
+  gap: 18px;
+}
+
+.classWorkspaceGrid,
+.reviewWorkspaceGrid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(220px, 0.34fr) minmax(0, 1fr);
+}
+
+.classRail,
+.submissionRail {
+  align-content: start;
+  display: grid;
+  gap: 8px;
+}
+
+.classRail > strong {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.classSelector,
+.submissionSelector {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+}
+
+.classSelector:hover,
+.classSelector.active,
+.submissionSelector:hover,
+.submissionSelector.active {
+  background: var(--surface-tint);
+  border-color: #cbd5ff;
+  color: var(--brand-strong);
+}
+
+.classSelector span,
+.submissionSelector strong {
+  font-weight: 740;
+}
+
+.classSelector small,
+.submissionSelector span {
+  color: var(--muted);
+}
+
+.createClassDisclosure {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 14px;
+}
+
+.createClassDisclosure summary {
+  color: var(--brand-strong);
+  cursor: pointer;
+  font-weight: 720;
+  margin-bottom: 12px;
+}
+
+.classDetail,
+.submissionDetail {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.classDetailHeader,
+.rosterActions,
+.provisionedSchool {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.classDetailHeader h2,
+.submissionDetail h2 {
+  color: #111827;
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.rosterActions select {
+  flex: 1;
+}
+
+.classworkSummary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.classworkSummary > div {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 8px;
+  min-height: 130px;
+  padding: 14px;
+}
+
+.classworkSummary strong {
+  color: #111827;
+  font-size: 24px;
+}
+
+.classworkSummary small {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.submissionDetail p {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  line-height: 1.6;
+  margin: 8px 0 0;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.gradingForm {
+  max-width: 540px;
+}
+
 .panel {
   min-width: 0;
   padding: 20px;
@@ -1160,7 +1299,10 @@ nav,
   .practiceSession,
   .workflowLayout,
   .onboardingLayout,
-  .peopleDirectory {
+  .peopleDirectory,
+  .classWorkspaceGrid,
+  .reviewWorkspaceGrid,
+  .classworkSummary {
     grid-template-columns: 1fr;
   }
 

@@ -1526,7 +1526,7 @@ function TeacherView({
         </article>
       ) : null}
 
-      {activeSection === "overview" || activeSection === "review" ? <article className="panel">
+      {activeSection === "overview" ? <article className="panel">
         <h2>Submissions</h2>
         <div className="signalList">
           {!(lms?.submissions ?? []).length ? <EmptyState>No submissions are waiting right now.</EmptyState> : null}
@@ -1535,31 +1535,16 @@ function TeacherView({
               <span>{submission.studentName}</span>
               <strong>{submission.status === "graded" ? `${submission.score}%` : "Ready to grade"}</strong>
               <small>{submission.response}</small>
-              {submission.status !== "graded" ? (
-                <button
-                  className="textButton fullWidth"
-                  onClick={() =>
-                    void runAction(`grade-${submission.id}`, () =>
-                      gradeSubmission(token ?? "", {
-                        submissionId: submission.id,
-                        score: 92,
-                        feedback: "Strong work. Check the explanation for a cleaner final step."
-                      })
-                    )
-                  }
-                  type="button"
-                >
-                  Grade
-                </button>
-              ) : null}
+              {submission.status !== "graded" ? <small>Open Grades to review and return feedback.</small> : null}
             </div>
           ))}
         </div>
       </article> : null}
 
+      {activeSection === "review" ? <TeacherReviewWorkspace lms={lms} runAction={runAction} token={token} /> : null}
       {activeSection === "review" ? <GradebookPanel lms={lms} /> : null}
 
-      {activeSection === "library" || activeSection === "review" ? <article className="panel wide">
+      {activeSection === "library" ? <article className="panel wide">
         <h2>Materials</h2>
         <div className="mappingList">
           {!(lms?.materials ?? []).length ? <EmptyState>No resources have been added yet.</EmptyState> : null}
@@ -1628,18 +1613,10 @@ function TeacherView({
         </div>
       </article> : null}
 
-      {activeSection === "overview" || activeSection === "classes" ? <article className="panel">
-        <h2>{activeSection === "classes" ? "Classes" : "Class signals"}</h2>
+      {activeSection === "overview" ? <article className="panel">
+        <h2>Class signals</h2>
         <div className="signalList">
-          {activeSection === "classes"
-            ? (lms?.classes ?? []).map((item) => (
-                <div key={item.id}>
-                  <span>{item.name} {item.section}</span>
-                  <strong>{item.subject}</strong>
-                  <small>{item.studentCount} students</small>
-                </div>
-              ))
-            : dashboard.teacher.classSignals.map((signal) => (
+          {dashboard.teacher.classSignals.map((signal) => (
                 <div key={signal.label}>
                   <span>{signal.label}</span>
                   <strong>{signal.value}</strong>
@@ -1648,8 +1625,154 @@ function TeacherView({
               ))}
         </div>
       </article> : null}
+      {activeSection === "classes" ? <TeacherClassroom lms={lms} runAction={runAction} token={token} /> : null}
       {activeSection === "attendance" ? <AttendanceManager lms={lms} runAction={runAction} token={token} /> : null}
     </section>
+  );
+}
+
+function TeacherClassroom({
+  lms,
+  runAction,
+  token
+}: {
+  lms: LmsOverview | null;
+  runAction: (id: string, action: () => Promise<void>) => Promise<void>;
+  token: string | null;
+}) {
+  const [selectedClassId, setSelectedClassId] = useState(lms?.classes[0]?.id ?? "");
+  const [classTab, setClassTab] = useState<"roster" | "classwork" | "progress">("roster");
+  const [newStudentId, setNewStudentId] = useState("");
+  const [classForm, setClassForm] = useState({ name: "Grade 8", section: "B", subject: "Mathematics" });
+  const classes = lms?.classes ?? [];
+  const activeClass = classes.find((item) => item.id === selectedClassId) ?? classes[0];
+  const roster = (lms?.enrollments ?? []).filter((enrollment) => enrollment.classId === activeClass?.id);
+  const enrolledIds = new Set(roster.map((student) => student.studentUserId));
+  const availableStudents = (lms?.students ?? []).filter((student) => !enrolledIds.has(student.id));
+  const classAssignments = (lms?.assignments ?? []).filter((assignment) => assignment.classId === activeClass?.id);
+  const classMaterials = (lms?.materials ?? []).filter((material) => material.classId === activeClass?.id);
+  const classQuizzes = (lms?.quizzes ?? []).filter((quiz) => quiz.classId === activeClass?.id);
+
+  return (
+    <article className="panel wide classWorkspace">
+      <div className="workflowHeader">
+        <div>
+          <span className="sectionEyebrow">Classes</span>
+          <h2>Classroom management</h2>
+        </div>
+        <span className="status approved">{classes.length} active</span>
+      </div>
+      <div className="classWorkspaceGrid">
+        <aside className="classRail">
+          <strong>Your classes</strong>
+          {classes.map((item) => (
+            <button className={activeClass?.id === item.id ? "classSelector active" : "classSelector"} key={item.id} onClick={() => setSelectedClassId(item.id)} type="button">
+              <span>{item.name} {item.section}</span>
+              <small>{item.subject} · {item.studentCount} students</small>
+            </button>
+          ))}
+          <details className="createClassDisclosure">
+            <summary>New class</summary>
+            <div className="formStack single">
+              <label><span>Class name</span><input value={classForm.name} onChange={(event) => setClassForm((current) => ({ ...current, name: event.target.value }))} /></label>
+              <label><span>Section</span><input value={classForm.section} onChange={(event) => setClassForm((current) => ({ ...current, section: event.target.value }))} /></label>
+              <label><span>Subject</span><input value={classForm.subject} onChange={(event) => setClassForm((current) => ({ ...current, subject: event.target.value }))} /></label>
+              <button className="textButton fullWidth" onClick={() => void runAction("teacher-create-class", () => createClass(token ?? "", classForm))} type="button">Create class</button>
+            </div>
+          </details>
+        </aside>
+        <div className="classDetail">
+          {activeClass ? (
+            <>
+              <div className="classDetailHeader">
+                <div>
+                  <h2>{activeClass.name} {activeClass.section}</h2>
+                  <span>{activeClass.subject} · {roster.length} enrolled students</span>
+                </div>
+                <span className="status approved">{activeClass.teacher}</span>
+              </div>
+              <div className="modeTabs" aria-label="Class detail">
+                <button className={classTab === "roster" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("roster")} type="button">Roster</button>
+                <button className={classTab === "classwork" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("classwork")} type="button">Classwork</button>
+                <button className={classTab === "progress" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("progress")} type="button">Progress</button>
+              </div>
+              {classTab === "roster" ? <div className="classRoster">
+                <div className="rosterActions">
+                  <select value={newStudentId} onChange={(event) => setNewStudentId(event.target.value)}>
+                    <option value="">Add an enrolled school student</option>
+                    {availableStudents.map((student) => <option key={student.id} value={student.id}>{student.displayName} · {student.email}</option>)}
+                  </select>
+                  <button className="textButton" disabled={!newStudentId} onClick={() => void runAction(`teacher-enroll-${newStudentId}`, async () => {
+                    await enrollStudent(token ?? "", { classId: activeClass.id, studentUserId: newStudentId });
+                    setNewStudentId("");
+                  })} type="button">Add student</button>
+                </div>
+                <div className="mappingList">
+                  {!roster.length ? <EmptyState>Enroll students from the school directory to begin.</EmptyState> : null}
+                  {roster.map((student) => <div key={student.id}><strong>{student.studentName}</strong><span>Active enrollment</span></div>)}
+                </div>
+              </div> : null}
+              {classTab === "classwork" ? <div className="classworkSummary">
+                <div><span>Assignments</span><strong>{classAssignments.length}</strong>{classAssignments.map((item) => <small key={item.id}>{item.title} · {item.submissions} submissions</small>)}</div>
+                <div><span>Materials</span><strong>{classMaterials.length}</strong>{classMaterials.map((item) => <small key={item.id}>{item.title}</small>)}</div>
+                <div><span>Quizzes</span><strong>{classQuizzes.length}</strong>{classQuizzes.map((item) => <small key={item.id}>{item.title} · {item.status}</small>)}</div>
+              </div> : null}
+              {classTab === "progress" ? <div className="mappingList">
+                {(lms?.gradebook ?? []).filter((row) => roster.some((student) => student.studentUserId === row.studentUserId)).map((row) => (
+                  <div key={row.studentUserId}><strong>{row.studentName}</strong><span>Assignment {row.assignmentAverage}% · Quiz {row.quizAverage}% · Practice {row.practiceAccuracy}%</span></div>
+                ))}
+              </div> : null}
+            </>
+          ) : <EmptyState>Create your first class to begin building classwork.</EmptyState>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function TeacherReviewWorkspace({
+  lms,
+  runAction,
+  token
+}: {
+  lms: LmsOverview | null;
+  runAction: (id: string, action: () => Promise<void>) => Promise<void>;
+  token: string | null;
+}) {
+  const submissions = lms?.submissions ?? [];
+  const [selectedId, setSelectedId] = useState(submissions.find((submission) => submission.status !== "graded")?.id ?? submissions[0]?.id ?? "");
+  const selected = submissions.find((submission) => submission.id === selectedId) ?? submissions[0];
+  const [score, setScore] = useState("85");
+  const [feedback, setFeedback] = useState("Clear reasoning. Review the final step and resubmit if you would like another attempt.");
+
+  useEffect(() => {
+    if (selected) {
+      setScore(String(selected.score ?? 85));
+      setFeedback(selected.feedback ?? "Clear reasoning. Review the final step and resubmit if you would like another attempt.");
+    }
+  }, [selected?.id]);
+
+  return (
+    <article className="panel wide reviewWorkspace">
+      <div className="workflowHeader">
+        <div><span className="sectionEyebrow">Grades</span><h2>Submission review</h2></div>
+        <span className="status approved">{submissions.filter((submission) => submission.status !== "graded").length} to review</span>
+      </div>
+      <div className="reviewWorkspaceGrid">
+        <aside className="submissionRail">
+          {submissions.map((submission) => <button className={selected?.id === submission.id ? "submissionSelector active" : "submissionSelector"} key={submission.id} onClick={() => setSelectedId(submission.id)} type="button"><strong>{submission.studentName}</strong><span>{submission.status === "graded" ? `${submission.score}% graded` : "Ready to grade"}</span></button>)}
+          {!submissions.length ? <EmptyState>No submissions are waiting right now.</EmptyState> : null}
+        </aside>
+        {selected ? <div className="submissionDetail">
+          <div><span className="sectionEyebrow">Student response</span><h2>{selected.studentName}</h2><p>{selected.response}</p></div>
+          <div className="formStack single gradingForm">
+            <label><span>Score</span><input max={100} min={0} type="number" value={score} onChange={(event) => setScore(event.target.value)} /></label>
+            <label><span>Feedback</span><textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} /></label>
+            <button className="textButton fullWidth" onClick={() => void runAction(`grade-${selected.id}`, () => gradeSubmission(token ?? "", { submissionId: selected.id, score: Number(score), feedback }))} type="button">Save grade and feedback</button>
+          </div>
+        </div> : null}
+      </div>
+    </article>
   );
 }
 

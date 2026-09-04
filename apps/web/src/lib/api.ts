@@ -175,6 +175,11 @@ export type LmsOverview = {
     xp: number;
     level: number;
   }>;
+  students: Array<{
+    id: string;
+    displayName: string;
+    email: string;
+  }>;
   assignments: Array<{
     id: string;
     classId: string;

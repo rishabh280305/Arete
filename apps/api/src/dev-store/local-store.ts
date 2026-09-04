@@ -342,7 +342,7 @@ export function markNotificationRead(input: { schoolId: string; userId: string; 
   });
 }
 
-export function createLocalUser(input: Omit<LocalUser, "id">, schoolId = "demo-school-northview") {
+export function createLocalUser(input: Omit<LocalUser, "id"> & { id?: string }, schoolId = "demo-school-northview") {
   return updateLocalStore((store) => {
     const user = createOrUpdateUserInStore(store, input);
     upsertMembershipInStore(store, schoolId, user.id, input.roles);
@@ -409,7 +409,7 @@ export function linkParentToStudent(input: { schoolId: string; parentUserId: str
   });
 }
 
-function createOrUpdateUserInStore(store: LocalStoreData, input: Omit<LocalUser, "id">) {
+function createOrUpdateUserInStore(store: LocalStoreData, input: Omit<LocalUser, "id"> & { id?: string }) {
   const email = input.email.toLowerCase();
   const existing = store.users.find((candidate) => candidate.email === email);
   if (existing) {
@@ -420,7 +420,7 @@ function createOrUpdateUserInStore(store: LocalStoreData, input: Omit<LocalUser,
   const user: LocalUser = {
     ...input,
     email,
-    id: `user-${randomUUID()}`
+    id: input.id ?? `user-${randomUUID()}`
   };
   store.users.push(user);
   return user;

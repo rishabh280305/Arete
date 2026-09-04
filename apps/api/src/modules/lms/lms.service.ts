@@ -22,6 +22,7 @@ export class LmsService {
       attendanceSummary: this.attendanceSummary(context),
       leaderboard: this.leaderboard(context),
       gradebook: this.gradebook(context),
+      students: this.visibleStudents(context),
       practice: lmsState.listPractice(context.schoolId),
       progress: lmsState.getStudentProgress(context.schoolId, context.userId)
     };
@@ -29,6 +30,21 @@ export class LmsService {
 
   private visibleMaterials(context: ActiveTenantContext) {
     return lmsState.listMaterials(context.schoolId);
+  }
+
+  private visibleStudents(context: ActiveTenantContext) {
+    if (!context.roles.includes("teacher") && !context.roles.includes("school_admin") && !context.roles.includes("platform_admin")) {
+      return [];
+    }
+    const store = readLocalStore();
+    const studentIds = new Set(
+      store.memberships
+        .filter((membership) => membership.schoolId === context.schoolId && membership.roles.includes("student"))
+        .map((membership) => membership.userId)
+    );
+    return store.users
+      .filter((user) => studentIds.has(user.id))
+      .map((user) => ({ id: user.id, displayName: user.displayName, email: user.email }));
   }
 
   private visibleQuizzes(context: ActiveTenantContext) {
@@ -247,7 +263,7 @@ export class LmsService {
   }
 
   createClass(context: ActiveTenantContext, input: { name: string; section: string; subject: string; teacherUserId?: string }) {
-    if (!hasPermission(context.roles, "classes:manage")) {
+    if (!hasPermission(context.roles, "classes:manage") && !context.roles.includes("teacher")) {
       throw new ForbiddenException("You cannot create classes in this school context");
     }
 
@@ -258,11 +274,12 @@ export class LmsService {
       subject: input.subject,
       teacher: "Unassigned"
     };
-    if (input.teacherUserId) {
+    const teacherUserId = context.roles.includes("teacher") ? context.userId : input.teacherUserId;
+    if (teacherUserId) {
       const teacherMembership = readLocalStore().memberships.find(
         (membership) =>
           membership.schoolId === context.schoolId &&
-          membership.userId === input.teacherUserId &&
+          membership.userId === teacherUserId &&
           membership.roles.includes("teacher")
       );
       if (!teacherMembership) {
@@ -270,7 +287,7 @@ export class LmsService {
       }
     }
     const newClass = lmsState.createClass(
-      input.teacherUserId ? { ...classInput, teacherUserId: input.teacherUserId } : classInput
+      teacherUserId ? { ...classInput, teacherUserId } : classInput
     );
     recordAuditEvent({
       schoolId: context.schoolId,
@@ -283,7 +300,9 @@ export class LmsService {
   }
 
   enrollStudent(context: ActiveTenantContext, input: { classId: string; studentUserId: string }) {
-    if (!hasPermission(context.roles, "classes:manage")) {
+    const targetClass = lmsState.listClasses(context.schoolId).find((item) => item.id === input.classId);
+    const canManage = hasPermission(context.roles, "classes:manage") || (context.roles.includes("teacher") && targetClass?.teacherUserId === context.userId);
+    if (!canManage) {
       throw new ForbiddenException("You cannot manage class rosters in this school context");
     }
 
