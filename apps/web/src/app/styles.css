@@ -688,6 +688,77 @@ nav,
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.classTabs {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.classStream,
+.classworkBoard {
+  display: grid;
+  gap: 16px;
+}
+
+.streamComposer,
+.classworkBoardHeader {
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.streamComposer strong,
+.classworkBoardHeader strong {
+  color: #111827;
+  display: block;
+}
+
+.streamComposer span,
+.classworkBoardHeader span {
+  display: block;
+  margin-top: 4px;
+}
+
+.streamList,
+.classworkItems {
+  display: grid;
+  gap: 8px;
+}
+
+.streamList > div,
+.classworkItems > div {
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+}
+
+.streamList svg,
+.classworkItems svg {
+  color: var(--brand);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.streamList strong,
+.classworkItems strong {
+  color: #111827;
+  display: block;
+}
+
+.streamList span,
+.classworkItems span {
+  display: block;
+  margin-top: 4px;
+}
+
 .classworkSummary > div {
   background: var(--surface-soft);
   border: 1px solid var(--border);

@@ -1069,9 +1069,7 @@ function TeacherView({
   const workflows: Array<{ id: TeacherWorkflow; label: string; icon: typeof ClipboardList }> = [
     { id: "assignment", label: "Assignment", icon: ClipboardList },
     { id: "material", label: "Material", icon: FolderOpen },
-    { id: "quiz", label: "Quiz", icon: ListChecks },
-    { id: "rubric", label: "Rubric", icon: FileText },
-    { id: "calendar", label: "Calendar", icon: CalendarDays }
+    { id: "quiz", label: "Quiz", icon: ListChecks }
   ];
 
   return (
@@ -1110,20 +1108,10 @@ function TeacherView({
         <article className="panel wide classworkStudio">
           <div className="panelHeader">
             <div>
-              <h2>Classwork studio</h2>
-              <span>Create one clean workflow at a time, then review before publishing.</span>
+              <h2>Create classwork</h2>
+              <span>Choose what students need next, fill in the essentials, then publish.</span>
             </div>
-            <button
-              className="iconTextButton"
-              onClick={() =>
-                void runAction("generate-ai", () =>
-                  generateAiDrafts(token ?? "", { topic: aiForm.topic, questionCount: aiForm.questionCount })
-                )
-              }
-              type="button"
-            >
-              <Wand2 size={16} /> Generate drafts
-            </button>
+            <span className="status approved">Saved directly to the selected class</span>
           </div>
 
           <div className="modeTabs workflowTabs" aria-label="Teacher workflow">
@@ -1175,17 +1163,9 @@ function TeacherView({
                       <input value={assignmentForm.title} onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))} />
                     </label>
                     <label>
-                      <span>Points</span>
-                      <input defaultValue="100" min={0} type="number" />
-                    </label>
-                    <label>
                       <span>Instructions</span>
                       <textarea value={assignmentForm.instructions} onChange={(event) => setAssignmentForm((current) => ({ ...current, instructions: event.target.value }))} />
                     </label>
-                    <div className="toggleList fullWidth">
-                      <label><input type="checkbox" defaultChecked /> Allow late submissions</label>
-                      <label><input type="checkbox" /> Allow resubmission</label>
-                    </div>
                     <button
                       className="textButton fullWidth"
                       onClick={() =>
@@ -1235,13 +1215,6 @@ function TeacherView({
                     <label>
                       <span>Title</span>
                       <input value={materialForm.title} onChange={(event) => setMaterialForm((current) => ({ ...current, title: event.target.value }))} />
-                    </label>
-                    <label>
-                      <span>Visibility</span>
-                      <select defaultValue="published">
-                        <option value="published">Published to students</option>
-                        <option value="draft">Draft</option>
-                      </select>
                     </label>
                     <label>
                       <span>{materialForm.kind === "link" ? "URL" : "Description"}</span>
@@ -1313,6 +1286,13 @@ function TeacherView({
                       type="button"
                     >
                       <ListChecks size={16} /> From bank
+                    </button>
+                    <button
+                      className="iconTextButton"
+                      onClick={() => void runAction("generate-ai", () => generateAiDrafts(token ?? "", { topic: aiForm.topic, questionCount: aiForm.questionCount }))}
+                      type="button"
+                    >
+                      <Wand2 size={16} /> Generate with AI
                     </button>
                   </div>
                   <div className="formStack">
@@ -1478,7 +1458,7 @@ function TeacherView({
               ) : null}
             </div>
 
-            <aside className="aiSidePanel">
+            {teacherWorkflow === "quiz" ? <aside className="aiSidePanel">
               <div className="panelHeader">
                 <div>
                   <h2>AI assist</h2>
@@ -1521,7 +1501,7 @@ function TeacherView({
                   </div>
                 ))}
               </div>
-            </aside>
+            </aside> : null}
           </div>
         </article>
       ) : null}
@@ -1625,7 +1605,7 @@ function TeacherView({
               ))}
         </div>
       </article> : null}
-      {activeSection === "classes" ? <TeacherClassroom lms={lms} runAction={runAction} token={token} /> : null}
+      {activeSection === "classes" ? <TeacherClassroom lms={lms} onCreateClasswork={() => setActiveSection("author")} runAction={runAction} token={token} /> : null}
       {activeSection === "attendance" ? <AttendanceManager lms={lms} runAction={runAction} token={token} /> : null}
     </section>
   );
@@ -1633,15 +1613,17 @@ function TeacherView({
 
 function TeacherClassroom({
   lms,
+  onCreateClasswork,
   runAction,
   token
 }: {
   lms: LmsOverview | null;
+  onCreateClasswork: () => void;
   runAction: (id: string, action: () => Promise<void>) => Promise<void>;
   token: string | null;
 }) {
   const [selectedClassId, setSelectedClassId] = useState(lms?.classes[0]?.id ?? "");
-  const [classTab, setClassTab] = useState<"roster" | "classwork" | "progress">("roster");
+  const [classTab, setClassTab] = useState<"stream" | "classwork" | "people" | "grades">("stream");
   const [newStudentId, setNewStudentId] = useState("");
   const [classForm, setClassForm] = useState({ name: "Grade 8", section: "B", subject: "Mathematics" });
   const classes = lms?.classes ?? [];
@@ -1691,12 +1673,25 @@ function TeacherClassroom({
                 </div>
                 <span className="status approved">{activeClass.teacher}</span>
               </div>
-              <div className="modeTabs" aria-label="Class detail">
-                <button className={classTab === "roster" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("roster")} type="button">Roster</button>
+              <div className="modeTabs classTabs" aria-label="Class detail">
+                <button className={classTab === "stream" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("stream")} type="button">Stream</button>
                 <button className={classTab === "classwork" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("classwork")} type="button">Classwork</button>
-                <button className={classTab === "progress" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("progress")} type="button">Progress</button>
+                <button className={classTab === "people" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("people")} type="button">People</button>
+                <button className={classTab === "grades" ? "modeTab active" : "modeTab"} onClick={() => setClassTab("grades")} type="button">Grades</button>
               </div>
-              {classTab === "roster" ? <div className="classRoster">
+              {classTab === "stream" ? <div className="classStream">
+                <div className="streamComposer">
+                  <div><strong>Keep {activeClass.name} {activeClass.section} moving</strong><span>Create an assignment, upload a resource, or publish a quiz from Classwork.</span></div>
+                  <button className="textButton" onClick={() => setClassTab("classwork")} type="button">View classwork</button>
+                </div>
+                <div className="streamList">
+                  {classAssignments.slice(0, 3).map((item) => <div key={item.id}><ClipboardList size={18} /><div><strong>{item.title}</strong><span>Assignment · Due {new Date(item.dueAt).toLocaleDateString()} · {item.submissions} submitted</span></div></div>)}
+                  {classMaterials.slice(0, 3).map((item) => <div key={item.id}><FolderOpen size={18} /><div><strong>{item.title}</strong><span>Material shared with this class</span></div></div>)}
+                  {classQuizzes.slice(0, 3).map((item) => <div key={item.id}><ListChecks size={18} /><div><strong>{item.title}</strong><span>{item.status === "published" ? "Quiz published" : "Quiz draft"}</span></div></div>)}
+                  {!classAssignments.length && !classMaterials.length && !classQuizzes.length ? <EmptyState>This stream will show classwork as you publish it.</EmptyState> : null}
+                </div>
+              </div> : null}
+              {classTab === "people" ? <div className="classRoster">
                 <div className="rosterActions">
                   <select value={newStudentId} onChange={(event) => setNewStudentId(event.target.value)}>
                     <option value="">Add an enrolled school student</option>
@@ -1712,12 +1707,16 @@ function TeacherClassroom({
                   {roster.map((student) => <div key={student.id}><strong>{student.studentName}</strong><span>Active enrollment</span></div>)}
                 </div>
               </div> : null}
-              {classTab === "classwork" ? <div className="classworkSummary">
-                <div><span>Assignments</span><strong>{classAssignments.length}</strong>{classAssignments.map((item) => <small key={item.id}>{item.title} · {item.submissions} submissions</small>)}</div>
-                <div><span>Materials</span><strong>{classMaterials.length}</strong>{classMaterials.map((item) => <small key={item.id}>{item.title}</small>)}</div>
-                <div><span>Quizzes</span><strong>{classQuizzes.length}</strong>{classQuizzes.map((item) => <small key={item.id}>{item.title} · {item.status}</small>)}</div>
+              {classTab === "classwork" ? <div className="classworkBoard">
+                <div className="classworkBoardHeader"><div><strong>Classwork</strong><span>Assignments, materials, and quizzes for this class</span></div><button className="textButton" onClick={onCreateClasswork} type="button">Create</button></div>
+                <div className="classworkItems">
+                  {classAssignments.map((item) => <div key={item.id}><ClipboardList size={18} /><div><strong>{item.title}</strong><span>Assignment · Due {new Date(item.dueAt).toLocaleDateString()} · {item.submissions} submitted</span></div></div>)}
+                  {classMaterials.map((item) => <div key={item.id}><FolderOpen size={18} /><div><strong>{item.title}</strong><span>Material · {item.kind}</span></div></div>)}
+                  {classQuizzes.map((item) => <div key={item.id}><ListChecks size={18} /><div><strong>{item.title}</strong><span>Quiz · {item.status} · {item.questions.length} questions</span></div></div>)}
+                  {!classAssignments.length && !classMaterials.length && !classQuizzes.length ? <EmptyState>Create the first item for this class from the Classwork page.</EmptyState> : null}
+                </div>
               </div> : null}
-              {classTab === "progress" ? <div className="mappingList">
+              {classTab === "grades" ? <div className="mappingList">
                 {(lms?.gradebook ?? []).filter((row) => roster.some((student) => student.studentUserId === row.studentUserId)).map((row) => (
                   <div key={row.studentUserId}><strong>{row.studentName}</strong><span>Assignment {row.assignmentAverage}% · Quiz {row.quizAverage}% · Practice {row.practiceAccuracy}%</span></div>
                 ))}
